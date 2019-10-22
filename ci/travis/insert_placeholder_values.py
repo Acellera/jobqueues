@@ -16,7 +16,7 @@ with open('setup.py', 'r') as f:
     text = f.read()
 
 text = text.replace('unpackaged', version)
-text = text.replace('Python :: 3', f'Python :: {os.getenv('CONDA_PY')}')
+text = text.replace('Python :: 3', f"Python :: {os.getenv('CONDA_PY')}")
 
 with open('setup.py', 'w') as f:
     f.write(text)
