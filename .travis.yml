@@ -28,7 +28,7 @@ before_install:
   - source ci/travis/install_miniconda.sh
 
 script:
-  - conda activate test
+  - source activate test
   - pip install --user --upgrade -q setuptools wheel twine
   # Insert version number and dependencies into pip and conda recipes
   - python ci/travis/insert_placeholder_values.py
