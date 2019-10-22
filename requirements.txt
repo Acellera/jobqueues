@@ -1,2 +1,4 @@
 numpy
 protocolinterface
+psutil
+pyyaml
