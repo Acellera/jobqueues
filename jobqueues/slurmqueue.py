@@ -7,12 +7,12 @@ import os
 import shutil
 import random
 import string
-from htmd.config import _config
+from jobqueues.config import _config
 import yaml
 from subprocess import check_output, CalledProcessError
 from protocolinterface import ProtocolInterface, val
-from htmd.queues.simqueue import SimQueue
-from htmd.util import ensurelist
+from jobqueues.simqueue import SimQueue
+from jobqueues.util import ensurelist
 import logging
 logger = logging.getLogger(__name__)
 

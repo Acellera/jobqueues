@@ -10,7 +10,7 @@ import string
 import numpy as np
 from subprocess import check_output, CalledProcessError
 from protocolinterface import ProtocolInterface, val
-from htmd.queues.simqueue import SimQueue
+from jobqueues.simqueue import SimQueue
 import logging
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
 
     Examples
     --------
-    >>> from htmd.ui import *
+    >>> from jobqueues.pbsqueue import PBSQueue
     >>> s = PBSQueue()
     >>> s.queue = 'multiscale'
     >>> s.submit('/my/runnable/folder/')  # Folder containing a run.sh bash script
@@ -75,7 +75,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
         self._qcancel = PBSQueue._find_binary('qdel')
         self._qstatus = PBSQueue._find_binary('qstat') + ' -Q'
 
-        self._sentinel = 'htmd.queues.done'
+        self._sentinel = 'jobqueues.done'
         # For synchronous
         self._joblist = []
         self._dirs = []

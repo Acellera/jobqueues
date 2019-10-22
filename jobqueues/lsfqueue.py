@@ -9,9 +9,9 @@ import random
 import string
 from subprocess import check_output, CalledProcessError, DEVNULL
 from protocolinterface import ProtocolInterface, val
-from htmd.queues.simqueue import SimQueue
-from htmd.util import ensurelist
-from htmd.config import _config
+from jobqueues.simqueue import SimQueue
+from jobqueues.util import ensurelist
+from jobqueues.config import _config
 import yaml
 import logging
 logger = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
-        from htmd.util import ensurelist
+        from jobqueues.util import ensurelist
         workdir = os.path.abspath(workdir)
         with open(fname, 'w') as f:
             f.write('#!/bin/bash\n')

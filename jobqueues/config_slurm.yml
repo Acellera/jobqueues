@@ -1,0 +1,11 @@
+psi4:
+  partition: normalCPU
+  ncpu: 4
+  ngpu: 0
+  memory: 3000
+
+acemd:
+  partition: normalGPU
+  ncpu: 1
+  ngpu: 1
+  memory: 4000

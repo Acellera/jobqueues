@@ -4,7 +4,7 @@
 # No redistribution in whole or part
 #
 import numpy as np
-from htmd.queues.simqueue import SimQueue
+from jobqueues.simqueue import SimQueue
 from protocolinterface import ProtocolInterface, val
 import queue
 import os
@@ -14,7 +14,6 @@ from glob import glob as glob
 from abc import abstractmethod
 import logging
 import psutil
-from pint import UnitRegistry
 logger = logging.getLogger(__name__)
 
 # TODO: Merge CPU and GPU queue into a single one which manages ncpu and ngpu simultaneously
@@ -200,8 +199,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         return list()
 
     def _getmemory(self):
-        ureg = UnitRegistry()
-        total_memory = int(ureg.Quantity(psutil.virtual_memory().total, ureg.byte).to('MiB').magnitude)
+        total_memory = int(psutil.virtual_memory().total  >> 20)  # Converts bytes to MiB
         nr_devices = len(self._getdevices())
         if nr_devices != 0:
             return int(total_memory/nr_devices)
@@ -255,10 +253,10 @@ class LocalGPUQueue(_LocalQueue):
 
 
     .. rubric:: Methods
-    .. autoautosummary:: htmd.queues.localqueue.LocalGPUQueue
+    .. autoautosummary:: jobqueues.localqueue.LocalGPUQueue
        :methods:
     .. rubric:: Attributes
-    .. autoautosummary:: htmd.queues.localqueue.LocalGPUQueue
+    .. autoautosummary:: jobqueues.localqueue.LocalGPUQueue
        :attributes:
 
     """
@@ -347,10 +345,10 @@ class LocalCPUQueue(_LocalQueue):
         of memory and the number of devices
 
     .. rubric:: Methods
-    .. autoautosummary:: htmd.queues.localqueue.LocalCPUQueue
+    .. autoautosummary:: jobqueues.localqueue.LocalCPUQueue
        :methods:
     .. rubric:: Attributes
-    .. autoautosummary:: htmd.queues.localqueue.LocalCPUQueue
+    .. autoautosummary:: jobqueues.localqueue.LocalCPUQueue
        :attributes:
 
     """
@@ -406,41 +404,8 @@ class LocalCPUQueue(_LocalQueue):
         self.memory = value
 
 if __name__ == "__main__":
-    from htmd.home import home
+    import os
+    import jobqueues
+    import inspect
+    homeDir = os.path.dirname(inspect.getfile(jobqueues))
 
-    lo = LocalCPUQueue()
-
-    assert lo.ncpu == 1
-    assert lo.memory > 1024
-
-    lo.ncpu = 100
-    mem1 = lo.memory
-    assert lo.ncpu == 100
-
-    lo.ncpu = 1
-    mem2 = lo.memory
-    assert lo.ncpu == 1
-
-    assert mem1 >= mem2
-
-    folder = os.path.join(home(dataDir='test-localqueue'), 'test_cpu')
-    lo.submit([folder] * 2)
-    lo.wait(sentinel=False)
-    lo.retrieve()
-
-    lo.submit([folder] * 2)
-    lo.wait(sentinel=True)
-    lo.retrieve()
-
-    lo = LocalGPUQueue()
-    try:
-        lo._getdevices()
-        folders = glob(os.path.join(home(dataDir='test-localqueue'), 'test_gpu*'))
-        lo.submit(folders)
-        lo.wait()
-        for f in folders:
-            torem = glob(os.path.join(f, 'output.*')) + glob(os.path.join(f, 'restart.*')) + glob(os.path.join(f, 'log.txt'))
-            for r in torem:
-                os.remove(r)
-    except:
-        print('No GPUs detected on this machine')

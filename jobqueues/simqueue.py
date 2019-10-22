@@ -45,7 +45,7 @@ class SimQueue(ABC):
 
     def __init__(self):
         super().__init__()
-        self._sentinel = 'htmd.queues.done'
+        self._sentinel = 'jobqueues.done'
         # For synchronous
         self._dirs = None
 
