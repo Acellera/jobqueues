@@ -3,7 +3,6 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-import numpy as np
 from jobqueues.simqueue import SimQueue
 from protocolinterface import ProtocolInterface, val
 import queue
@@ -298,7 +297,7 @@ class LocalGPUQueue(_LocalQueue):
                 visible_devices = visible_devices_str.split(',')
                 logger.info('GPU devices requested: {}'.format(','.join(map(str, devices))))
                 logger.info('GPU devices visible: {}'.format(','.join(map(str, visible_devices))))
-                devices = list(np.intersect1d(devices, visible_devices))
+                devices = [dd for dd in devices if dd in visible_devices]  # Only keep the selected visible devices. interest1d of the two lists
             logger.info('Using GPU devices {}'.format(','.join(map(str, devices))))
         return devices
 
@@ -372,10 +371,11 @@ class LocalCPUQueue(_LocalQueue):
         return [None] * devices
 
     def _getmemory(self):
+        from math import floor
 
         memory = psutil.virtual_memory().total/1024**2
-        memory *= np.clip(self.ncpu/psutil.cpu_count(), 0, 1)
-        memory = int(np.floor(memory))
+        memory *= max(0, min(1, self.ncpu/psutil.cpu_count())) # Clamp to [0, 1]
+        memory = int(floor(memory))
 
         return memory
 

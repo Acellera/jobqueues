@@ -7,7 +7,6 @@ import os
 import shutil
 import random
 import string
-import numpy as np
 from subprocess import check_output, CalledProcessError
 from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
@@ -139,7 +138,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
 
     def _autoQueueName(self):
         ret = check_output(self._qinfo)
-        return ','.join(np.unique([i.split()[0].strip('*') for i in ret.decode('ascii').split('\n')[1:-1]]))
+        return ','.join(list(set([i.split()[0].strip('*') for i in ret.decode('ascii').split('\n')[1:-1]])))
 
     def _autoJobName(self, path):
         return os.path.basename(os.path.abspath(path)) + '_' + ''.join([random.choice(string.digits) for _ in range(5)])
