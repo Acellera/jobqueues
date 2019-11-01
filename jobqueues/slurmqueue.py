@@ -70,7 +70,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
     _defaults = {'partition': None, 'priority': None, 'ngpu': 1, 'ncpu': 1, 'memory': 1000, 'walltime': None,
                  'envvars': 'ACEMD_HOME,HTMD_LICENSE_FILE', 'prerun': None}
 
-    def __init__(self, _configapp=None):
+    def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
         self._arg('jobname', 'str', 'Job name (identifier)', None, val.String())
@@ -106,39 +106,42 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         self._arg('account', 'str', 'Charge resources used by the jobs to specified account.', None, val.String())
 
         # Load Slurm configuration profile
-        slurmconfig = _config['slurm']
+        if _configfile is None:
+            _configfile = _config['slurm']
+
         profile = None
         if _configapp is not None:
-            if slurmconfig is not None:
-                if os.path.isfile(slurmconfig) and slurmconfig.endswith(('.yml', '.yaml')):
+            if _configfile is not None:
+                if os.path.isfile(_configfile) and _configfile.endswith(('.yml', '.yaml')):
                     try:
-                        with open(slurmconfig, 'r') as f:
-                            profile = yaml.load(f)
-                        logger.info('Loaded Slurm configuration YAML file {}'.format(slurmconfig))
+                        with open(_configfile, 'r') as f:
+                            profile = yaml.load(f, Loader=yaml.FullLoader)
+                        logger.info('Loaded Slurm configuration YAML file {}'.format(_configfile))
                     except:
-                        logger.warning('Could not load YAML file {}'.format(slurmconfig))
+                        logger.warning('Could not load YAML file {}'.format(_configfile))
                 else:
-                    logger.warning('{} does not exist or it is not a YAML file.'.format(slurmconfig))
+                    logger.warning('{} does not exist or it is not a YAML file.'.format(_configfile))
                 if profile:
                     try:
                         properties = profile[_configapp]
                     except:
                         raise RuntimeError('There is no profile in {} for configuration '
-                                           'app {}'.format(slurmconfig, _configapp))
+                                           'app {}'.format(_configfile, _configapp))
                     for p in properties:
                         setattr(self, p, properties[p])
                         logger.info('Setting {} to {}'.format(p, properties[p]))
             else:
                 raise RuntimeError('No Slurm configuration YAML file defined for the configapp')
         else:
-            if slurmconfig is not None:
+            if _configfile is not None:
                 logger.warning('Slurm configuration YAML file defined without configuration app')
 
         # Find executables
-        self._qsubmit = SlurmQueue._find_binary('sbatch')
-        self._qinfo = SlurmQueue._find_binary('sinfo')
-        self._qcancel = SlurmQueue._find_binary('scancel')
-        self._qstatus = SlurmQueue._find_binary('squeue')
+        if _findExecutables:
+            self._qsubmit = SlurmQueue._find_binary('sbatch')
+            self._qinfo = SlurmQueue._find_binary('sinfo')
+            self._qcancel = SlurmQueue._find_binary('scancel')
+            self._qstatus = SlurmQueue._find_binary('squeue')
 
     @staticmethod
     def _find_binary(binary):
@@ -319,8 +322,20 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         self.memory = value
 
 
+import unittest
+class _TestSlurmQueue(unittest.TestCase):
+    def test_config(self):
+        from jobqueues.home import home
+        import os
+
+        configfile = os.path.join(home(), 'config_slurm.yml')
+        with open(configfile, 'r') as f:
+            reference = yaml.load(f, Loader=yaml.FullLoader)
+
+        for appkey in reference:
+            sq = SlurmQueue(_configapp=appkey, _configfile=configfile, _findExecutables=False)
+            for key in reference[appkey]:
+                assert sq.__getattribute__(key) == reference[appkey][key], f'Config setup of SlurmQueue failed on app "{appkey}" and key "{key}""'
+
 if __name__ == "__main__":
-    # TODO: Create fake binaries for instance creation testing
-    """
-    q = SlurmQueue()
-    """
+    unittest.main(verbosity=2)

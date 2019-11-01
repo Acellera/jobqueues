@@ -70,7 +70,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
                  'ngpu': 1, 'gpu_options': None, 'ncpu': 1, 'memory': 4000, 'walltime': None, 'resources': None,
                  'envvars': 'ACEMD_HOME', 'prerun': None}
 
-    def __init__(self, _configapp=None):
+    def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
         self._arg('version', 'int', 'LSF major version', self._defaults['version'], valid_values=[9, 10])
@@ -105,39 +105,42 @@ class LsfQueue(SimQueue, ProtocolInterface):
                                     'loading modules)', self._defaults['prerun'], val.String(), nargs='*')
 
         # Load LSF configuration profile
-        lsfconfig = _config['lsf']
+        if _configfile is None:
+            _configfile = _config['lsf']
+
         profile = None
         if _configapp is not None:
-            if lsfconfig is not None:
-                if os.path.isfile(lsfconfig) and lsfconfig.endswith(('.yml', '.yaml')):
+            if _configfile is not None:
+                if os.path.isfile(_configfile) and _configfile.endswith(('.yml', '.yaml')):
                     try:
-                        with open(lsfconfig, 'r') as f:
+                        with open(_configfile, 'r') as f:
                             profile = yaml.load(f)
-                        logger.info('Loaded LSF configuration YAML file {}'.format(lsfconfig))
+                        logger.info('Loaded LSF configuration YAML file {}'.format(_configfile))
                     except:
-                        logger.warning('Could not load YAML file {}'.format(lsfconfig))
+                        logger.warning('Could not load YAML file {}'.format(_configfile))
                 else:
-                    logger.warning('{} does not exist or it is not a YAML file.'.format(lsfconfig))
+                    logger.warning('{} does not exist or it is not a YAML file.'.format(_configfile))
                 if profile:
                     try:
                         properties = profile[_configapp]
                     except:
                         raise RuntimeError('There is no profile in {} for configuration '
-                                           'app {}'.format(lsfconfig, _configapp))
+                                           'app {}'.format(_configfile, _configapp))
                     for p in properties:
                         setattr(self, p, properties[p])
                         logger.info('Setting {} to {}'.format(p, properties[p]))
             else:
                 raise RuntimeError('No LSF configuration YAML file defined for the configapp')
         else:
-            if lsfconfig is not None:
+            if _configfile is not None:
                 logger.warning('LSF configuration YAML file defined without configuration app')
 
         # Find executables
-        self._qsubmit = LsfQueue._find_binary('bsub')
-        self._qinfo = LsfQueue._find_binary('bqueues')
-        self._qcancel = LsfQueue._find_binary('bkill')
-        self._qstatus = LsfQueue._find_binary('bjobs')
+        if _findExecutables:
+            self._qsubmit = LsfQueue._find_binary('bsub')
+            self._qinfo = LsfQueue._find_binary('bqueues')
+            self._qcancel = LsfQueue._find_binary('bkill')
+            self._qstatus = LsfQueue._find_binary('bjobs')
 
     @staticmethod
     def _find_binary(binary):
@@ -325,9 +328,20 @@ class LsfQueue(SimQueue, ProtocolInterface):
     def memory(self, value):
         self.memory = value
 
+import unittest
+class _TestLsfQueue(unittest.TestCase):
+    def test_config(self):
+        from jobqueues.home import home
+        import os
+
+        configfile = os.path.join(home(), 'config_lsf.yml')
+        with open(configfile, 'r') as f:
+            reference = yaml.load(f, Loader=yaml.FullLoader)
+
+        for appkey in reference:
+            sq = LsfQueue(_configapp=appkey, _configfile=configfile, _findExecutables=False)
+            for key in reference[appkey]:
+                assert sq.__getattribute__(key) == reference[appkey][key], f'Config setup of LsfQueue failed on app "{appkey}" and key "{key}""'
 
 if __name__ == "__main__":
-    # TODO: Create fake binaries for instance creation testing
-    """
-    q = LsfQueue()
-    """
+    unittest.main(verbosity=2)
