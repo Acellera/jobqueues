@@ -114,7 +114,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
                 if os.path.isfile(_configfile) and _configfile.endswith(('.yml', '.yaml')):
                     try:
                         with open(_configfile, 'r') as f:
-                            profile = yaml.load(f)
+                            profile = yaml.load(f, Loader=yaml.FullLoader)
                         logger.info('Loaded LSF configuration YAML file {}'.format(_configfile))
                     except:
                         logger.warning('Could not load YAML file {}'.format(_configfile))
