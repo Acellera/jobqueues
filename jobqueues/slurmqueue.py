@@ -166,7 +166,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             f.write('#SBATCH --cpus-per-task={}\n'.format(self.ncpu))
             f.write('#SBATCH --mem={}\n'.format(self.memory))
             f.write('#SBATCH --priority={}\n'.format(self.priority))
-            f.write('#SBATCH --workdir={}\n'.format(workdir))
+            f.write('#SBATCH -D={}\n'.format(workdir))  # Don't use the long version. Depending on SLURM version it's workdir or chdir
             f.write('#SBATCH --output={}\n'.format(self.outputstream))
             f.write('#SBATCH --error={}\n'.format(self.errorstream))
             if self.envvars is not None:
