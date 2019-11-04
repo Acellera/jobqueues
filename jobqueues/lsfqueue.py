@@ -245,6 +245,9 @@ class LsfQueue(SimQueue, ProtocolInterface):
             try:
                 ret = check_output(self._qsubmit + " < " + jobscript, shell=True)
                 logger.debug(ret)
+            except CalledProcessError as e:
+                logger.error(e.output)
+                raise
             except:
                 raise
 

@@ -177,6 +177,9 @@ class PBSQueue(SimQueue, ProtocolInterface):
                 except:
                     pass
                 logger.debug(ret)
+            except CalledProcessError as e:
+                logger.error(e.output)
+                raise
             except:
                 raise
 

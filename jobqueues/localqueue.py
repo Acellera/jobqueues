@@ -84,7 +84,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                     ret = check_output(jobsh)
                     logger.debug(ret)
                 except Exception as e:
-                    logger.info('Error in simulation {}. {}'.format(path, e))
+                    logger.error('Error in simulation {}. {}'.format(path, e))
                     self._setCompleted(path)
                     queue.task_done()
                     continue
