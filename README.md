@@ -3,6 +3,14 @@ Unified interface for submitting jobs to various queueing systems.
 
 ## Install
 
+To get the latest PyPI release use:
+
+```sh
+pip install jobqueues
+```
+
+Or if you want the latest github version:
+
 ```sh
 pip install git+https://github.com/acellera/jobqueues
 ```
