@@ -116,8 +116,9 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                 simname = os.path.basename(os.path.normpath(workdir))
                 # create directory for new file
                 odir = os.path.join(datadir, simname)
-                os.mkdir(odir)
-                f.write('\nmv {} {}'.format(' '.join(self.copy), odir))
+                os.makedirs(odir, exist_ok=True)
+                if os.path.abspath(odir) != os.path.abspath(workdir):
+                    f.write('\nmv {} {}'.format(' '.join(self.copy), odir))
 
         os.chmod(fname, 0o700)
 
@@ -199,7 +200,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
     def _getmemory(self):
         total_memory = int(psutil.virtual_memory().total  >> 20)  # Converts bytes to MiB
-        nr_devices = len(self._getdevices())
+        nr_devices = len(self._getdevices(_logger=False))
         if nr_devices != 0:
             return int(total_memory/nr_devices)
         else:
@@ -272,7 +273,7 @@ class LocalGPUQueue(_LocalQueue):
                                    'total amount of memory and the number of devices', None,
                   val.Number(int, '0POS'))
 
-    def _getdevices(self):
+    def _getdevices(self, _logger=True):
         ngpu = self.ngpu
         devices = self.devices
         if ngpu is not None and devices is not None:
@@ -295,10 +296,11 @@ class LocalGPUQueue(_LocalQueue):
             visible_devices_str = os.getenv('CUDA_VISIBLE_DEVICES')
             if visible_devices_str is not None:
                 visible_devices = visible_devices_str.split(',')
-                logger.info('GPU devices requested: {}'.format(','.join(map(str, devices))))
-                logger.info('GPU devices visible: {}'.format(','.join(map(str, visible_devices))))
+                if _logger:
+                    logger.info('GPU devices requested: {}'.format(','.join(map(str, devices))))
+                    logger.info('GPU devices visible: {}'.format(','.join(map(str, visible_devices))))
                 devices = [dd for dd in devices if dd in visible_devices]  # Only keep the selected visible devices. interest1d of the two lists
-            logger.info('Using GPU devices {}'.format(','.join(map(str, devices))))
+            if _logger: logger.info('Using GPU devices {}'.format(','.join(map(str, devices))))
         return devices
 
     @property
