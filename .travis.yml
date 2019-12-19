@@ -35,8 +35,8 @@ script:
   # Install the package locally
   - pip install .
   # Run tests
-  - pip install -q codecov coverage
-  - coverage run -m unittest discover --start-directory ./jobqueues --pattern "*.py"
+  - pip install -q codecov coverage pytest
+  - coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
   - echo "Finished tests"
 
 after_success:

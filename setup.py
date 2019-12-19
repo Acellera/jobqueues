@@ -1,5 +1,4 @@
 import setuptools
-import unittest
 
 
 with open("requirements.txt") as f:
@@ -11,7 +10,7 @@ if __name__ == "__main__":
 
     setuptools.setup(
         name="jobqueues",
-        version="unpackaged",
+        version="0.1.8",
         author="Acellera",
         author_email="info@acellera.com",
         description="Wrappers for various queueing systems in python.",
@@ -19,7 +18,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         url="https://github.com/acellera/jobqueues/",
         classifiers=[
-            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: None",
             "Operating System :: POSIX :: Linux",
         ],
         packages=setuptools.find_packages(

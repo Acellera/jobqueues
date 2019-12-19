@@ -1,5 +1,4 @@
 from jobqueues.localqueue import LocalGPUQueue
-from jobqueues.celeryfiles.tasks import run_simulation
 from protocolinterface import ProtocolInterface, val
 import os
 import logging
@@ -29,6 +28,8 @@ class CeleryQueue(LocalGPUQueue):
         self._tasks = []
 
     def submit(self, dirs):
+        from jobqueues.celeryfiles.tasks import run_simulation
+
         dirs = self._submitinit(dirs)
 
         for d in dirs:
