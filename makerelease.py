@@ -7,15 +7,13 @@ from subprocess import call
 
 
 def makeMajorRelease(version, message):
-    relname = 'rel-{}'.format(version)
-    call(['git', 'checkout', 'master'])
-    call(['git', 'fetch'])
-    call(['git', 'pull'])
-    call(['git', 'checkout', '-b', relname])
-    call(['git', 'tag', version, '-m', message])
-    call(['git', 'push', '--tags', 'origin', relname])
-    call(['git', 'checkout', 'master'])
-    call(['git', 'tag', version, '-m', message])
-    call(['git', 'push', '--tags'])
-
-
+    relname = "rel-{}".format(version)
+    call(["git", "checkout", "master"])
+    call(["git", "fetch"])
+    call(["git", "pull"])
+    call(["git", "checkout", "-b", relname])
+    call(["git", "tag", version, "-m", message])
+    call(["git", "push", "--tags", "origin", relname])
+    call(["git", "checkout", "master"])
+    call(["git", "tag", version, "-m", message])
+    call(["git", "push", "--tags"])

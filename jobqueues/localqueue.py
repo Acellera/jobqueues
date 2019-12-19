@@ -489,4 +489,3 @@ if __name__ == "__main__":
     import inspect
 
     homeDir = os.path.dirname(inspect.getfile(jobqueues))
-

@@ -14,6 +14,7 @@ from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,129 +68,259 @@ class SlurmQueue(SimQueue, ProtocolInterface):
     >>> s.submit('/my/runnable/folder/')  # Folder containing a run.sh bash script
     """
 
-    _defaults = {'partition': None, 'priority': None, 'ngpu': 1, 'ncpu': 1, 'memory': 1000, 'walltime': None,
-                 'envvars': 'ACEMD_HOME,HTMD_LICENSE_FILE', 'prerun': None}
+    _defaults = {
+        "partition": None,
+        "priority": None,
+        "ngpu": 1,
+        "ncpu": 1,
+        "memory": 1000,
+        "walltime": None,
+        "envvars": "ACEMD_HOME,HTMD_LICENSE_FILE",
+        "prerun": None,
+    }
 
     def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
-        self._arg('jobname', 'str', 'Job name (identifier)', None, val.String())
-        self._arg('partition', 'str', 'The queue (partition) or list of queues to run on. If list, the one offering '
-                                      'earliest initiation will be used.',
-                  self._defaults['partition'], val.String(), nargs='*')
-        self._arg('priority', 'str', 'Job priority', self._defaults['priority'], val.String())
-        self._arg('ngpu', 'int', 'Number of GPUs to use for a single job', self._defaults['ngpu'],
-                  val.Number(int, '0POS'))
-        self._arg('ncpu', 'int', 'Number of CPUs to use for a single job', self._defaults['ncpu'],
-                  val.Number(int, 'POS'))
-        self._arg('memory', 'int', 'Amount of memory per job (MiB)', self._defaults['memory'], val.Number(int, 'POS'))
-        self._arg('gpumemory', 'int', 'Only run on GPUs with at least this much memory. Needs special setup of SLURM. '
-                                      'Check how to define gpu_mem on SLURM.', None, val.Number(int, '0POS'))
-        self._arg('walltime', 'int', 'Job timeout (minutes)', self._defaults['walltime'], val.Number(int, 'POS'))
-        self._cmdDeprecated('environment', 'envvars')
-        self._arg('mailtype', 'str', 'When to send emails. Separate options with commas like \'END,FAIL\'.', None,
-                  val.String())
-        self._arg('mailuser', 'str', 'User email address.', None, val.String())
-        self._arg('outputstream', 'str', 'Output stream.', 'slurm.%N.%j.out', val.String())
-        self._arg('errorstream', 'str', 'Error stream.', 'slurm.%N.%j.err'), val.String()
-        self._arg('datadir', 'str', 'The path in which to store completed trajectories.', None, val.String())
-        self._arg('trajext', 'str', 'Extension of trajectory files. This is needed to copy them to datadir.', 'xtc',
-                  val.String())
-        self._arg('nodelist', 'list', 'A list of nodes on which to run every job at the *same time*! Careful! The jobs'
-                                      ' will be duplicated!', None, val.String(), nargs='*')
-        self._arg('exclude', 'list', 'A list of nodes on which *not* to run the jobs. Use this to select nodes on '
-                                     'which to allow the jobs to run on.', None, val.String(), nargs='*')
-        self._arg('envvars', 'str', 'Envvars to propagate from submission node to the running node (comma-separated)',
-                  self._defaults['envvars'], val.String())
-        self._arg('prerun', 'list', 'Shell commands to execute on the running node before the job (e.g. '
-                                    'loading modules)', self._defaults['prerun'], val.String(), nargs='*')
-        self._arg('account', 'str', 'Charge resources used by the jobs to specified account.', None, val.String())
+        self._arg("jobname", "str", "Job name (identifier)", None, val.String())
+        self._arg(
+            "partition",
+            "str",
+            "The queue (partition) or list of queues to run on. If list, the one offering "
+            "earliest initiation will be used.",
+            self._defaults["partition"],
+            val.String(),
+            nargs="*",
+        )
+        self._arg(
+            "priority", "str", "Job priority", self._defaults["priority"], val.String()
+        )
+        self._arg(
+            "ngpu",
+            "int",
+            "Number of GPUs to use for a single job",
+            self._defaults["ngpu"],
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "ncpu",
+            "int",
+            "Number of CPUs to use for a single job",
+            self._defaults["ncpu"],
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "memory",
+            "int",
+            "Amount of memory per job (MiB)",
+            self._defaults["memory"],
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "gpumemory",
+            "int",
+            "Only run on GPUs with at least this much memory. Needs special setup of SLURM. "
+            "Check how to define gpu_mem on SLURM.",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "walltime",
+            "int",
+            "Job timeout (minutes)",
+            self._defaults["walltime"],
+            val.Number(int, "POS"),
+        )
+        self._cmdDeprecated("environment", "envvars")
+        self._arg(
+            "mailtype",
+            "str",
+            "When to send emails. Separate options with commas like 'END,FAIL'.",
+            None,
+            val.String(),
+        )
+        self._arg("mailuser", "str", "User email address.", None, val.String())
+        self._arg(
+            "outputstream", "str", "Output stream.", "slurm.%N.%j.out", val.String()
+        )
+        self._arg(
+            "errorstream", "str", "Error stream.", "slurm.%N.%j.err"
+        ), val.String()
+        self._arg(
+            "datadir",
+            "str",
+            "The path in which to store completed trajectories.",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "trajext",
+            "str",
+            "Extension of trajectory files. This is needed to copy them to datadir.",
+            "xtc",
+            val.String(),
+        )
+        self._arg(
+            "nodelist",
+            "list",
+            "A list of nodes on which to run every job at the *same time*! Careful! The jobs"
+            " will be duplicated!",
+            None,
+            val.String(),
+            nargs="*",
+        )
+        self._arg(
+            "exclude",
+            "list",
+            "A list of nodes on which *not* to run the jobs. Use this to select nodes on "
+            "which to allow the jobs to run on.",
+            None,
+            val.String(),
+            nargs="*",
+        )
+        self._arg(
+            "envvars",
+            "str",
+            "Envvars to propagate from submission node to the running node (comma-separated)",
+            self._defaults["envvars"],
+            val.String(),
+        )
+        self._arg(
+            "prerun",
+            "list",
+            "Shell commands to execute on the running node before the job (e.g. "
+            "loading modules)",
+            self._defaults["prerun"],
+            val.String(),
+            nargs="*",
+        )
+        self._arg(
+            "account",
+            "str",
+            "Charge resources used by the jobs to specified account.",
+            None,
+            val.String(),
+        )
 
         # Load Slurm configuration profile
         if _configfile is None:
-            _configfile = _config['slurm']
+            _configfile = _config["slurm"]
 
         profile = None
         if _configapp is not None:
             if _configfile is not None:
-                if os.path.isfile(_configfile) and _configfile.endswith(('.yml', '.yaml')):
+                if os.path.isfile(_configfile) and _configfile.endswith(
+                    (".yml", ".yaml")
+                ):
                     try:
-                        with open(_configfile, 'r') as f:
+                        with open(_configfile, "r") as f:
                             profile = yaml.load(f, Loader=yaml.FullLoader)
-                        logger.info('Loaded Slurm configuration YAML file {}'.format(_configfile))
+                        logger.info(
+                            "Loaded Slurm configuration YAML file {}".format(
+                                _configfile
+                            )
+                        )
                     except:
-                        logger.warning('Could not load YAML file {}'.format(_configfile))
+                        logger.warning(
+                            "Could not load YAML file {}".format(_configfile)
+                        )
                 else:
-                    logger.warning('{} does not exist or it is not a YAML file.'.format(_configfile))
+                    logger.warning(
+                        "{} does not exist or it is not a YAML file.".format(
+                            _configfile
+                        )
+                    )
                 if profile:
                     try:
                         properties = profile[_configapp]
                     except:
-                        raise RuntimeError('There is no profile in {} for configuration '
-                                           'app {}'.format(_configfile, _configapp))
+                        raise RuntimeError(
+                            "There is no profile in {} for configuration "
+                            "app {}".format(_configfile, _configapp)
+                        )
                     for p in properties:
                         setattr(self, p, properties[p])
-                        logger.info('Setting {} to {}'.format(p, properties[p]))
+                        logger.info("Setting {} to {}".format(p, properties[p]))
             else:
-                raise RuntimeError('No Slurm configuration YAML file defined for the configapp')
+                raise RuntimeError(
+                    "No Slurm configuration YAML file defined for the configapp"
+                )
         else:
             if _configfile is not None:
-                logger.warning('Slurm configuration YAML file defined without configuration app')
+                logger.warning(
+                    "Slurm configuration YAML file defined without configuration app"
+                )
 
         # Find executables
         if _findExecutables:
-            self._qsubmit = SlurmQueue._find_binary('sbatch')
-            self._qinfo = SlurmQueue._find_binary('sinfo')
-            self._qcancel = SlurmQueue._find_binary('scancel')
-            self._qstatus = SlurmQueue._find_binary('squeue')
+            self._qsubmit = SlurmQueue._find_binary("sbatch")
+            self._qinfo = SlurmQueue._find_binary("sinfo")
+            self._qcancel = SlurmQueue._find_binary("scancel")
+            self._qstatus = SlurmQueue._find_binary("squeue")
 
     @staticmethod
     def _find_binary(binary):
         ret = shutil.which(binary, mode=os.X_OK)
         if not ret:
-            raise FileNotFoundError("Could not find required executable [{}]".format(binary))
+            raise FileNotFoundError(
+                "Could not find required executable [{}]".format(binary)
+            )
         ret = os.path.abspath(ret)
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
         workdir = os.path.abspath(workdir)
-        with open(fname, 'w') as f:
-            f.write('#!/bin/bash\n')
-            f.write('#\n')
-            f.write('#SBATCH --job-name={}\n'.format(self.jobname))
-            f.write('#SBATCH --partition={}\n'.format(','.join(ensurelist(self.partition))))
+        with open(fname, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write("#\n")
+            f.write("#SBATCH --job-name={}\n".format(self.jobname))
+            f.write(
+                "#SBATCH --partition={}\n".format(",".join(ensurelist(self.partition)))
+            )
             if self.ngpu != 0:
-                f.write('#SBATCH --gres=gpu:{}'.format(self.ngpu))
+                f.write("#SBATCH --gres=gpu:{}".format(self.ngpu))
                 if self.gpumemory is not None:
-                    f.write(',gpu_mem:{}'.format(self.gpumemory))
-                f.write('\n')
-            f.write('#SBATCH --cpus-per-task={}\n'.format(self.ncpu))
-            f.write('#SBATCH --mem={}\n'.format(self.memory))
-            f.write('#SBATCH --priority={}\n'.format(self.priority))
-            f.write('#SBATCH -D {}\n'.format(workdir))  # Don't use the long version. Depending on SLURM version it's workdir or chdir
-            f.write('#SBATCH --output={}\n'.format(self.outputstream))
-            f.write('#SBATCH --error={}\n'.format(self.errorstream))
+                    f.write(",gpu_mem:{}".format(self.gpumemory))
+                f.write("\n")
+            f.write("#SBATCH --cpus-per-task={}\n".format(self.ncpu))
+            f.write("#SBATCH --mem={}\n".format(self.memory))
+            f.write("#SBATCH --priority={}\n".format(self.priority))
+            f.write(
+                "#SBATCH -D {}\n".format(workdir)
+            )  # Don't use the long version. Depending on SLURM version it's workdir or chdir
+            f.write("#SBATCH --output={}\n".format(self.outputstream))
+            f.write("#SBATCH --error={}\n".format(self.errorstream))
             if self.envvars is not None:
-                f.write('#SBATCH --export={}\n'.format(self.envvars))
+                f.write("#SBATCH --export={}\n".format(self.envvars))
             if self.walltime is not None:
-                f.write('#SBATCH --time={}\n'.format(self.walltime))
+                f.write("#SBATCH --time={}\n".format(self.walltime))
             if self.mailtype is not None and self.mailuser is not None:
-                f.write('#SBATCH --mail-type={}\n'.format(self.mailtype))
-                f.write('#SBATCH --mail-user={}\n'.format(self.mailuser))
+                f.write("#SBATCH --mail-type={}\n".format(self.mailtype))
+                f.write("#SBATCH --mail-user={}\n".format(self.mailuser))
             if self.nodelist is not None:
-                f.write('#SBATCH --nodelist={}\n'.format(','.join(ensurelist(self.nodelist))))
+                f.write(
+                    "#SBATCH --nodelist={}\n".format(
+                        ",".join(ensurelist(self.nodelist))
+                    )
+                )
             if self.exclude is not None:
-                f.write('#SBATCH --exclude={}\n'.format(','.join(ensurelist(self.exclude))))
+                f.write(
+                    "#SBATCH --exclude={}\n".format(",".join(ensurelist(self.exclude)))
+                )
             if self.account is not None:
-                f.write('#SBATCH --account={}\n'.format(self.account))
+                f.write("#SBATCH --account={}\n".format(self.account))
             # Trap kill signals to create sentinel file
-            f.write('\ntrap "touch {}" EXIT SIGTERM\n'.format(os.path.normpath(os.path.join(workdir, self._sentinel))))
-            f.write('\n')
+            f.write(
+                '\ntrap "touch {}" EXIT SIGTERM\n'.format(
+                    os.path.normpath(os.path.join(workdir, self._sentinel))
+                )
+            )
+            f.write("\n")
             if self.prerun is not None:
                 for call in ensurelist(self.prerun):
-                    f.write('{}\n'.format(call))
-            f.write('\ncd {}\n'.format(workdir))
-            f.write('{}'.format(runsh))
+                    f.write("{}\n".format(call))
+            f.write("\ncd {}\n".format(workdir))
+            f.write("{}".format(runsh))
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -200,7 +331,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
                 # create directory for new file
                 odir = os.path.join(datadir, simname)
                 os.mkdir(odir)
-                f.write('\nmv *.{} {}'.format(self.trajext, odir))
+                f.write("\nmv *.{} {}".format(self.trajext, odir))
 
         os.chmod(fname, 0o700)
 
@@ -209,7 +340,11 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         pass
 
     def _autoJobName(self, path):
-        return os.path.basename(os.path.abspath(path)) + '_' + ''.join([random.choice(string.digits) for _ in range(5)])
+        return (
+            os.path.basename(os.path.abspath(path))
+            + "_"
+            + "".join([random.choice(string.digits) for _ in range(5)])
+        )
 
     def submit(self, dirs):
         """ Submits all directories
@@ -222,11 +357,11 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         dirs = self._submitinit(dirs)
 
         if self.partition is None:
-            raise ValueError('The partition needs to be defined.')
+            raise ValueError("The partition needs to be defined.")
 
         # if all folders exist, submit
         for d in dirs:
-            logger.info('Queueing ' + d)
+            logger.info("Queueing " + d)
 
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
@@ -234,7 +369,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             runscript = self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, 'job.sh'))
+            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output([self._qsubmit, jobscript])
@@ -255,12 +390,21 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         """
         import time
         import getpass
+
         if self.partition is None:
-            raise ValueError('The partition needs to be defined.')
+            raise ValueError("The partition needs to be defined.")
         if self.jobname is None:
-            raise ValueError('The jobname needs to be defined.')
+            raise ValueError("The jobname needs to be defined.")
         user = getpass.getuser()
-        cmd = [self._qstatus, '-n', self.jobname, '-u', user, '-p', ','.join(ensurelist(self.partition))]
+        cmd = [
+            self._qstatus,
+            "-n",
+            self.jobname,
+            "-u",
+            user,
+            "-p",
+            ",".join(ensurelist(self.partition)),
+        ]
         logger.debug(cmd)
 
         # This command randomly fails so I need to allow it to repeat or it crashes adaptive
@@ -289,20 +433,21 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         """ Cancels all currently running and queued jobs
         """
         import getpass
+
         if self.partition is None:
-            raise ValueError('The partition needs to be defined.')
+            raise ValueError("The partition needs to be defined.")
         if self.jobname is None:
-            raise ValueError('The jobname needs to be defined.')
+            raise ValueError("The jobname needs to be defined.")
         user = getpass.getuser()
         for q in ensurelist(self.partition):
-            cmd = [self._qcancel, '-n', self.jobname, '-u', user, '-p', q]
+            cmd = [self._qcancel, "-n", self.jobname, "-u", user, "-p", q]
             logger.debug(cmd)
             ret = check_output(cmd)
             logger.debug(ret.decode("ascii"))
 
     @property
     def ncpu(self):
-        return self.__dict__['ncpu']
+        return self.__dict__["ncpu"]
 
     @ncpu.setter
     def ncpu(self, value):
@@ -310,7 +455,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
     @property
     def ngpu(self):
-        return self.__dict__['ngpu']
+        return self.__dict__["ngpu"]
 
     @ngpu.setter
     def ngpu(self, value):
@@ -318,7 +463,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
     @property
     def memory(self):
-        return self.__dict__['memory']
+        return self.__dict__["memory"]
 
     @memory.setter
     def memory(self, value):
@@ -326,19 +471,26 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
 
 import unittest
+
+
 class _TestSlurmQueue(unittest.TestCase):
     def test_config(self):
         from jobqueues.home import home
         import os
 
-        configfile = os.path.join(home(), 'config_slurm.yml')
-        with open(configfile, 'r') as f:
+        configfile = os.path.join(home(), "config_slurm.yml")
+        with open(configfile, "r") as f:
             reference = yaml.load(f, Loader=yaml.FullLoader)
 
         for appkey in reference:
-            sq = SlurmQueue(_configapp=appkey, _configfile=configfile, _findExecutables=False)
+            sq = SlurmQueue(
+                _configapp=appkey, _configfile=configfile, _findExecutables=False
+            )
             for key in reference[appkey]:
-                assert sq.__getattribute__(key) == reference[appkey][key], f'Config setup of SlurmQueue failed on app "{appkey}" and key "{key}""'
+                assert (
+                    sq.__getattribute__(key) == reference[appkey][key]
+                ), f'Config setup of SlurmQueue failed on app "{appkey}" and key "{key}""'
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

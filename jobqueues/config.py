@@ -8,14 +8,10 @@ import logging
 
 logger = logging.getLogger(__file__)
 
-_config = {
-    'lsf': None, 
-    'slurm': None
-    }
+_config = {"lsf": None, "slurm": None}
 
 
-def config(lsf=_config['lsf'],
-           slurm=_config['slurm']):
+def config(lsf=_config["lsf"], slurm=_config["slurm"]):
     """
     Function to temporarily change configuration variables.
 
@@ -26,5 +22,5 @@ def config(lsf=_config['lsf'],
     slurm : str
         Defines a YAML file that can contain default profile configurations for an SlurmQueue
     """
-    _config['lsf'] = lsf
-    _config['slurm'] = slurm
+    _config["lsf"] = lsf
+    _config["slurm"] = slurm

@@ -26,18 +26,19 @@ def home(dataDir=None, libDir=False):
         The directory
     """
 
-    homeDir=os.path.dirname(inspect.getfile(jobqueues))
+    homeDir = os.path.dirname(inspect.getfile(jobqueues))
     try:
-      if sys._MEIPASS:
-         homeDir = sys._MEIPASS
+        if sys._MEIPASS:
+            homeDir = sys._MEIPASS
     except:
-      pass
+        pass
 
     return homeDir
 
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
 
     h = home()

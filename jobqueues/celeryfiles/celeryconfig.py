@@ -6,4 +6,3 @@ imports = ("jobqueues.celeryfiles.tasks",)
 task_routes = {
     "jobqueues.celeryfiles.tasks.run_simulation": "gpu",
 }
-

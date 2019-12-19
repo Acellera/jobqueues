@@ -42,10 +42,9 @@ class ProjectNotExistError(Exception):
 
 
 class SimQueue(ABC):
-
     def __init__(self):
         super().__init__()
-        self._sentinel = 'jobqueues.done'
+        self._sentinel = "jobqueues.done"
         # For synchronous
         self._dirs = None
 
@@ -61,7 +60,9 @@ class SimQueue(ABC):
 
     def _submitinit(self, dirs):
         if isinstance(dirs, str):
-            dirs = [dirs, ]
+            dirs = [
+                dirs,
+            ]
         if self._dirs is None:
             self._dirs = []
         self._dirs.extend(dirs)
@@ -100,6 +101,7 @@ class SimQueue(ABC):
         if reporttime is not None:
             if reporttime > sleeptime:
                 from math import round
+
                 reportfrequency = round(reporttime / sleeptime)
             else:
                 reportfrequency = 1
@@ -113,7 +115,7 @@ class SimQueue(ABC):
                     if reportcallback is not None:
                         reportcallback(inprog)
                     else:
-                        logger.info('{} jobs are pending completion'.format(inprog))
+                        logger.info("{} jobs are pending completion".format(inprog))
                     i = 1
                 else:
                     i += 1
@@ -134,9 +136,10 @@ class SimQueue(ABC):
             Total number of directories which have not completed
         """
         import os
+
         total = 0
         if self._dirs is None:
-            raise RuntimeError('This method relies on running synchronously.')
+            raise RuntimeError("This method relies on running synchronously.")
         for i in self._dirs:
             if not os.path.exists(os.path.join(i, self._sentinel)):
                 total += 1
@@ -144,21 +147,29 @@ class SimQueue(ABC):
 
     def _cleanSentinel(self, d):
         import os
+
         if os.path.exists(os.path.join(d, self._sentinel)):
             try:
                 os.remove(os.path.join(d, self._sentinel))
             except:
-                logger.warning('Could not remove {} sentinel from {}'.format(self._sentinel, d))
+                logger.warning(
+                    "Could not remove {} sentinel from {}".format(self._sentinel, d)
+                )
             else:
-                logger.debug('Removed existing {} sentinel from {}'.format(self._sentinel, d))
+                logger.debug(
+                    "Removed existing {} sentinel from {}".format(self._sentinel, d)
+                )
 
     def _getRunScript(self, d):
         import os
-        runscript = os.path.abspath(os.path.join(d, 'run.sh'))
+
+        runscript = os.path.abspath(os.path.join(d, "run.sh"))
         if not os.path.exists(runscript):
-            raise FileExistsError('File {} does not exist.'.format(runscript))
+            raise FileExistsError("File {} does not exist.".format(runscript))
         if not os.access(runscript, os.X_OK):
-            raise PermissionError('File {} does not have execution permissions.'.format(runscript))
+            raise PermissionError(
+                "File {} does not have execution permissions.".format(runscript)
+            )
         return runscript
 
     @abstractmethod

@@ -14,6 +14,7 @@ from jobqueues.util import ensurelist
 from jobqueues.config import _config
 import yaml
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,136 +67,252 @@ class LsfQueue(SimQueue, ProtocolInterface):
     >>> s.submit('/my/runnable/folder/')  # Folder containing a run.sh bash script
     """
 
-    _defaults = {'version': 9, 'queue': None, 'app': None, 'gpu_queue': None, 'cpu_queue': None,
-                 'ngpu': 1, 'gpu_options': None, 'ncpu': 1, 'memory': 4000, 'walltime': None, 'resources': None,
-                 'envvars': 'ACEMD_HOME', 'prerun': None}
+    _defaults = {
+        "version": 9,
+        "queue": None,
+        "app": None,
+        "gpu_queue": None,
+        "cpu_queue": None,
+        "ngpu": 1,
+        "gpu_options": None,
+        "ncpu": 1,
+        "memory": 4000,
+        "walltime": None,
+        "resources": None,
+        "envvars": "ACEMD_HOME",
+        "prerun": None,
+    }
 
     def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
-        self._arg('version', 'int', 'LSF major version', self._defaults['version'], valid_values=[9, 10])
-        self._arg('jobname', 'str', 'Job name (identifier)', None, val.String())
-        self._arg('queue', 'list', 'The queue or list of queues to run on. If list, it attempts to submit the job to '
-                                   'the first queue listed', self._defaults['queue'], val.String(), nargs='*')
-        self._arg('app', 'str', 'The application profile', self._defaults['app'], val.String())
-        self._arg('ngpu', 'int', 'Number of GPUs to use for a single job', self._defaults['ngpu'],
-                  val.Number(int, '0POS'))
-        self._arg('gpu_options', 'dict', 'Number of GPUs to use for a single job', self._defaults['gpu_options'],
-                  val.Dictionary(key_type=str, valid_keys=['mode', 'mps', 'j_exclusive'],
-                                 value_type={'mode': str, 'mps': str, 'j_exclusive': str},
-                                 valid_values={'mode': ['shared', 'exclusive_process'],
-                                               'mps': ['yes', 'no'], 'j_exclusive': ['yes', 'no']}
-                                 )
-                  )
-        self._arg('ncpu', 'int', 'Number of CPUs to use for a single job', self._defaults['ncpu'],
-                  val.Number(int, '0POS'))
-        self._arg('memory', 'int', 'Amount of memory per job (MiB)', self._defaults['memory'], val.Number(int, '0POS'))
-        self._arg('walltime', 'int', 'Job timeout (hour:min or min)', self._defaults['walltime'],
-                  val.Number(int, '0POS'))
-        self._arg('resources', 'list', 'Resources of the queue', self._defaults['resources'], val.String(), nargs='*')
-        self._cmdDeprecated('environment', 'prerun')
-        self._arg('outputstream', 'str', 'Output stream.', 'lsf.%J.out', val.String())
-        self._arg('errorstream', 'str', 'Error stream.', 'lsf.%J.err', val.String())
-        self._arg('datadir', 'str', 'The path in which to store completed trajectories.', None, val.String())
-        self._arg('trajext', 'str', 'Extension of trajectory files. This is needed to copy them to datadir.', 'xtc',
-                  val.String())
-        self._arg('envvars', 'str', 'Envvars to propagate from submission node to the running node (comma-separated)',
-                  self._defaults['envvars'], val.String())
-        self._arg('prerun', 'list', 'Shell commands to execute on the running node before the job (e.g. '
-                                    'loading modules)', self._defaults['prerun'], val.String(), nargs='*')
+        self._arg(
+            "version",
+            "int",
+            "LSF major version",
+            self._defaults["version"],
+            valid_values=[9, 10],
+        )
+        self._arg("jobname", "str", "Job name (identifier)", None, val.String())
+        self._arg(
+            "queue",
+            "list",
+            "The queue or list of queues to run on. If list, it attempts to submit the job to "
+            "the first queue listed",
+            self._defaults["queue"],
+            val.String(),
+            nargs="*",
+        )
+        self._arg(
+            "app", "str", "The application profile", self._defaults["app"], val.String()
+        )
+        self._arg(
+            "ngpu",
+            "int",
+            "Number of GPUs to use for a single job",
+            self._defaults["ngpu"],
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "gpu_options",
+            "dict",
+            "Number of GPUs to use for a single job",
+            self._defaults["gpu_options"],
+            val.Dictionary(
+                key_type=str,
+                valid_keys=["mode", "mps", "j_exclusive"],
+                value_type={"mode": str, "mps": str, "j_exclusive": str},
+                valid_values={
+                    "mode": ["shared", "exclusive_process"],
+                    "mps": ["yes", "no"],
+                    "j_exclusive": ["yes", "no"],
+                },
+            ),
+        )
+        self._arg(
+            "ncpu",
+            "int",
+            "Number of CPUs to use for a single job",
+            self._defaults["ncpu"],
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "memory",
+            "int",
+            "Amount of memory per job (MiB)",
+            self._defaults["memory"],
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "walltime",
+            "int",
+            "Job timeout (hour:min or min)",
+            self._defaults["walltime"],
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "resources",
+            "list",
+            "Resources of the queue",
+            self._defaults["resources"],
+            val.String(),
+            nargs="*",
+        )
+        self._cmdDeprecated("environment", "prerun")
+        self._arg("outputstream", "str", "Output stream.", "lsf.%J.out", val.String())
+        self._arg("errorstream", "str", "Error stream.", "lsf.%J.err", val.String())
+        self._arg(
+            "datadir",
+            "str",
+            "The path in which to store completed trajectories.",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "trajext",
+            "str",
+            "Extension of trajectory files. This is needed to copy them to datadir.",
+            "xtc",
+            val.String(),
+        )
+        self._arg(
+            "envvars",
+            "str",
+            "Envvars to propagate from submission node to the running node (comma-separated)",
+            self._defaults["envvars"],
+            val.String(),
+        )
+        self._arg(
+            "prerun",
+            "list",
+            "Shell commands to execute on the running node before the job (e.g. "
+            "loading modules)",
+            self._defaults["prerun"],
+            val.String(),
+            nargs="*",
+        )
 
         # Load LSF configuration profile
         if _configfile is None:
-            _configfile = _config['lsf']
+            _configfile = _config["lsf"]
 
         profile = None
         if _configapp is not None:
             if _configfile is not None:
-                if os.path.isfile(_configfile) and _configfile.endswith(('.yml', '.yaml')):
+                if os.path.isfile(_configfile) and _configfile.endswith(
+                    (".yml", ".yaml")
+                ):
                     try:
-                        with open(_configfile, 'r') as f:
+                        with open(_configfile, "r") as f:
                             profile = yaml.load(f, Loader=yaml.FullLoader)
-                        logger.info('Loaded LSF configuration YAML file {}'.format(_configfile))
+                        logger.info(
+                            "Loaded LSF configuration YAML file {}".format(_configfile)
+                        )
                     except:
-                        logger.warning('Could not load YAML file {}'.format(_configfile))
+                        logger.warning(
+                            "Could not load YAML file {}".format(_configfile)
+                        )
                 else:
-                    logger.warning('{} does not exist or it is not a YAML file.'.format(_configfile))
+                    logger.warning(
+                        "{} does not exist or it is not a YAML file.".format(
+                            _configfile
+                        )
+                    )
                 if profile:
                     try:
                         properties = profile[_configapp]
                     except:
-                        raise RuntimeError('There is no profile in {} for configuration '
-                                           'app {}'.format(_configfile, _configapp))
+                        raise RuntimeError(
+                            "There is no profile in {} for configuration "
+                            "app {}".format(_configfile, _configapp)
+                        )
                     for p in properties:
                         setattr(self, p, properties[p])
-                        logger.info('Setting {} to {}'.format(p, properties[p]))
+                        logger.info("Setting {} to {}".format(p, properties[p]))
             else:
-                raise RuntimeError('No LSF configuration YAML file defined for the configapp')
+                raise RuntimeError(
+                    "No LSF configuration YAML file defined for the configapp"
+                )
         else:
             if _configfile is not None:
-                logger.warning('LSF configuration YAML file defined without configuration app')
+                logger.warning(
+                    "LSF configuration YAML file defined without configuration app"
+                )
 
         # Find executables
         if _findExecutables:
-            self._qsubmit = LsfQueue._find_binary('bsub')
-            self._qinfo = LsfQueue._find_binary('bqueues')
-            self._qcancel = LsfQueue._find_binary('bkill')
-            self._qstatus = LsfQueue._find_binary('bjobs')
+            self._qsubmit = LsfQueue._find_binary("bsub")
+            self._qinfo = LsfQueue._find_binary("bqueues")
+            self._qcancel = LsfQueue._find_binary("bkill")
+            self._qstatus = LsfQueue._find_binary("bjobs")
 
     @staticmethod
     def _find_binary(binary):
         ret = shutil.which(binary, mode=os.X_OK)
         if not ret:
-            raise FileNotFoundError("Could not find required executable [{}]".format(binary))
+            raise FileNotFoundError(
+                "Could not find required executable [{}]".format(binary)
+            )
         ret = os.path.abspath(ret)
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
         from jobqueues.util import ensurelist
+
         workdir = os.path.abspath(workdir)
-        with open(fname, 'w') as f:
-            f.write('#!/bin/bash\n')
-            f.write('#\n')
-            f.write('#BSUB -J {}\n'.format(self.jobname))
-            f.write('#BSUB -q "{}"\n'.format(' '.join(ensurelist(self.queue))))
-            f.write('#BSUB -n {}\n'.format(self.ncpu))
+        with open(fname, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write("#\n")
+            f.write("#BSUB -J {}\n".format(self.jobname))
+            f.write('#BSUB -q "{}"\n'.format(" ".join(ensurelist(self.queue))))
+            f.write("#BSUB -n {}\n".format(self.ncpu))
             if self.app is not None:
-                f.write('#BSUB -app {}\n'.format(self.app))
+                f.write("#BSUB -app {}\n".format(self.app))
             if self.ngpu != 0:
                 if self.version == 9:
                     if self.gpu_options is not None:
-                        logger.warning('gpu_options argument was set while it is not needed for LSF version 9')
-                    f.write('#BSUB -R "select[ngpus>0] rusage[ngpus_excl_p={}]"\n'.format(self.ngpu))
+                        logger.warning(
+                            "gpu_options argument was set while it is not needed for LSF version 9"
+                        )
+                    f.write(
+                        '#BSUB -R "select[ngpus>0] rusage[ngpus_excl_p={}]"\n'.format(
+                            self.ngpu
+                        )
+                    )
                 elif self.version == 10:
                     if not self.gpu_options:
-                        self.gpu_options = {'mode': 'exclusive_process'}
+                        self.gpu_options = {"mode": "exclusive_process"}
                     gpu_requirements = list()
-                    gpu_requirements.append('num={}'.format(self.ngpu))
+                    gpu_requirements.append("num={}".format(self.ngpu))
                     for i in self.gpu_options:
-                        gpu_requirements.append('{}={}'.format(i, self.gpu_options[i]))
-                    f.write('#BSUB -gpu "{}"\n'.format(':'.join(gpu_requirements)))
+                        gpu_requirements.append("{}={}".format(i, self.gpu_options[i]))
+                    f.write('#BSUB -gpu "{}"\n'.format(":".join(gpu_requirements)))
                 else:
-                    raise AttributeError('Version not supported')
+                    raise AttributeError("Version not supported")
             if self.resources is not None:
                 for resource in ensurelist(self.resources):
                     f.write('#BSUB -R "{}"\n'.format(resource))
-            f.write('#BSUB -M {}\n'.format(self.memory))
-            f.write('#BSUB -cwd {}\n'.format(workdir))
-            f.write('#BSUB -outdir {}\n'.format(workdir))
-            f.write('#BSUB -o {}\n'.format(self.outputstream))
-            f.write('#BSUB -e {}\n'.format(self.errorstream))
+            f.write("#BSUB -M {}\n".format(self.memory))
+            f.write("#BSUB -cwd {}\n".format(workdir))
+            f.write("#BSUB -outdir {}\n".format(workdir))
+            f.write("#BSUB -o {}\n".format(self.outputstream))
+            f.write("#BSUB -e {}\n".format(self.errorstream))
             if self.envvars is not None:
-                f.write('#BSUB --env {}\n'.format(self.envvars))
+                f.write("#BSUB --env {}\n".format(self.envvars))
             if self.walltime is not None:
-                f.write('#BSUB -W {}\n'.format(self.walltime))
+                f.write("#BSUB -W {}\n".format(self.walltime))
             # Trap kill signals to create sentinel file
-            f.write('\ntrap "touch {}" EXIT SIGTERM\n'.format(os.path.normpath(os.path.join(workdir, self._sentinel))))
-            f.write('\n')
+            f.write(
+                '\ntrap "touch {}" EXIT SIGTERM\n'.format(
+                    os.path.normpath(os.path.join(workdir, self._sentinel))
+                )
+            )
+            f.write("\n")
             if self.prerun is not None:
                 for call in ensurelist(self.prerun):
-                    f.write('{}\n'.format(call))
-            f.write('\ncd {}\n'.format(workdir))
-            f.write('{}'.format(runsh))
+                    f.write("{}\n".format(call))
+            f.write("\ncd {}\n".format(workdir))
+            f.write("{}".format(runsh))
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -206,7 +323,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
                 # create directory for new file
                 odir = os.path.join(datadir, simname)
                 os.mkdir(odir)
-                f.write('\nmv *.{} {}'.format(self.trajext, odir))
+                f.write("\nmv *.{} {}".format(self.trajext, odir))
 
         os.chmod(fname, 0o700)
 
@@ -215,7 +332,11 @@ class LsfQueue(SimQueue, ProtocolInterface):
         pass
 
     def _autoJobName(self, path):
-        return os.path.basename(os.path.abspath(path)) + '_' + ''.join([random.choice(string.digits) for _ in range(5)])
+        return (
+            os.path.basename(os.path.abspath(path))
+            + "_"
+            + "".join([random.choice(string.digits) for _ in range(5)])
+        )
 
     def submit(self, dirs):
         """ Submits all directories
@@ -228,11 +349,11 @@ class LsfQueue(SimQueue, ProtocolInterface):
         dirs = self._submitinit(dirs)
 
         if self.queue is None:
-            raise ValueError('The queue needs to be defined.')
+            raise ValueError("The queue needs to be defined.")
 
         # if all folders exist, submit
         for d in dirs:
-            logger.info('Queueing ' + d)
+            logger.info("Queueing " + d)
 
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
@@ -240,7 +361,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
             runscript = self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, 'job.sh'))
+            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output(self._qsubmit + " < " + jobscript, shell=True)
@@ -261,14 +382,15 @@ class LsfQueue(SimQueue, ProtocolInterface):
         """
         import time
         import getpass
+
         if self.queue is None:
-            raise ValueError('The queue needs to be defined.')
+            raise ValueError("The queue needs to be defined.")
         if self.jobname is None:
-            raise ValueError('The jobname needs to be defined.')
+            raise ValueError("The jobname needs to be defined.")
         user = getpass.getuser()
         l_total = 0
         for q in ensurelist(self.queue):
-            cmd = [self._qstatus, '-J', self.jobname, '-u', user, '-q', q]
+            cmd = [self._qstatus, "-J", self.jobname, "-u", user, "-q", q]
             logger.debug(cmd)
 
             # This command randomly fails so I need to allow it to repeat or it crashes adaptive
@@ -298,18 +420,19 @@ class LsfQueue(SimQueue, ProtocolInterface):
         """ Cancels all currently running and queued jobs
         """
         import getpass
+
         if self.queue is None:
-            raise ValueError('The queue needs to be defined.')
+            raise ValueError("The queue needs to be defined.")
         user = getpass.getuser()
         for q in ensurelist(self.queue):
-            cmd = [self._qcancel, '-J', self.jobname, '-u', user, '-q', q]
+            cmd = [self._qcancel, "-J", self.jobname, "-u", user, "-q", q]
             logger.debug(cmd)
             ret = check_output(cmd, stderr=DEVNULL)
             logger.debug(ret.decode("ascii"))
 
     @property
     def ncpu(self):
-        return self.__dict__['ncpu']
+        return self.__dict__["ncpu"]
 
     @ncpu.setter
     def ncpu(self, value):
@@ -317,7 +440,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
 
     @property
     def ngpu(self):
-        return self.__dict__['ngpu']
+        return self.__dict__["ngpu"]
 
     @ngpu.setter
     def ngpu(self, value):
@@ -325,26 +448,34 @@ class LsfQueue(SimQueue, ProtocolInterface):
 
     @property
     def memory(self):
-        return self.__dict__['memory']
+        return self.__dict__["memory"]
 
     @memory.setter
     def memory(self, value):
         self.memory = value
 
+
 import unittest
+
+
 class _TestLsfQueue(unittest.TestCase):
     def test_config(self):
         from jobqueues.home import home
         import os
 
-        configfile = os.path.join(home(), 'config_lsf.yml')
-        with open(configfile, 'r') as f:
+        configfile = os.path.join(home(), "config_lsf.yml")
+        with open(configfile, "r") as f:
             reference = yaml.load(f, Loader=yaml.FullLoader)
 
         for appkey in reference:
-            sq = LsfQueue(_configapp=appkey, _configfile=configfile, _findExecutables=False)
+            sq = LsfQueue(
+                _configapp=appkey, _configfile=configfile, _findExecutables=False
+            )
             for key in reference[appkey]:
-                assert sq.__getattribute__(key) == reference[appkey][key], f'Config setup of LsfQueue failed on app "{appkey}" and key "{key}""'
+                assert (
+                    sq.__getattribute__(key) == reference[appkey][key]
+                ), f'Config setup of LsfQueue failed on app "{appkey}" and key "{key}""'
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
