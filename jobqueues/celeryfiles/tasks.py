@@ -8,15 +8,23 @@ def add(x, y):
 
 @app.task
 def run_simulation(folder, deviceid, sentinel, datadir, copyextensions):
-    from subprocess import check_output
+    from subprocess import call
     import os
+    import time
 
     runsh = os.path.join(folder, "run.sh")
     jobsh = os.path.join(folder, "job.sh")
+    stdfile = os.path.join(folder, "celery.out")
     _createJobScript(jobsh, folder, runsh, deviceid, sentinel, datadir, copyextensions)
 
+    # Sleep for a short bit so that the OS can pick up on the new file before executing it
+    time.sleep(0.2)
+
     try:
-        ret = check_output(jobsh)
+        with open(stdfile, "a") as fout:
+            call(
+                ["/bin/sh", jobsh], stdout=fout, stderr=fout,
+            )
         # logger.debug(ret)
     except Exception as e:
         # logger.error("Error in simulation {}. {}".format(folder, e))
@@ -40,14 +48,8 @@ def _createJobScript(
         )
         f.write("\n")
         if deviceid is not None:
-            f.write("export CUDA_VISIBLE_DEVICES={}\n".format(deviceid))
-        # Trap kill signals to create sentinel file
-        f.write(
-            '\ntrap "touch {}" EXIT SIGTERM\n'.format(
-                os.path.normpath(os.path.join(workdir, sentinel))
-            )
-        )
-        f.write("\n")
+            f.write("export CUDA_VISIBLE_DEVICES={}\n\n".format(deviceid))
+
         f.write("cd {}\n".format(os.path.abspath(workdir)))
         f.write("{}".format(runsh))
 

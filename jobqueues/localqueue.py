@@ -13,6 +13,7 @@ from glob import glob as glob
 from abc import abstractmethod
 import logging
 import psutil
+
 logger = logging.getLogger(__name__)
 
 # TODO: Merge CPU and GPU queue into a single one which manages ncpu and ngpu simultaneously
@@ -35,12 +36,29 @@ class _LocalQueue(SimQueue, ProtocolInterface):
     def __init__(self):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
-        self._arg('datadir', 'str', 'The path in which to store completed trajectories.', None, val.String())
-        self._arg('trajext', 'str', 'Extension of trajectory files. This is needed to copy them to datadir.', 'xtc',
-                  val.String())
-        self._arg('copy', 'list', 'A list of file names or globs for the files to copy to datadir', ('*.xtc', ),
-                  val.String(), nargs='*')
-        self._cmdDeprecated('trajext', 'copy')
+        self._arg(
+            "datadir",
+            "str",
+            "The path in which to store completed trajectories.",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "trajext",
+            "str",
+            "Extension of trajectory files. This is needed to copy them to datadir.",
+            "xtc",
+            val.String(),
+        )
+        self._arg(
+            "copy",
+            "list",
+            "A list of file names or globs for the files to copy to datadir",
+            ("*.xtc",),
+            val.String(),
+            nargs="*",
+        )
+        self._cmdDeprecated("trajext", "copy")
 
         self._states = dict()
         self._queue = None
@@ -55,7 +73,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
             self._threads = []
             for d in devices:
-                t = threading.Thread(target=self.run_job, args=(d, ))
+                t = threading.Thread(target=self.run_job, args=(d,))
                 t.daemon = True
                 t.start()
                 self._threads.append(t)
@@ -71,20 +89,20 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
             if path:
                 if deviceid is None:
-                    logger.info('Running ' + path)
+                    logger.info("Running " + path)
                 else:
                     logger.info("Running " + path + " on device " + str(deviceid))
                 self._setRunning(path)
 
-                runsh = os.path.join(path, 'run.sh')
-                jobsh = os.path.join(path, 'job.sh')
+                runsh = os.path.join(path, "run.sh")
+                jobsh = os.path.join(path, "job.sh")
                 self._createJobScript(jobsh, path, runsh, deviceid)
 
                 try:
                     ret = check_output(jobsh)
                     logger.debug(ret)
                 except Exception as e:
-                    logger.error('Error in simulation {}. {}'.format(path, e))
+                    logger.error("Error in simulation {}. {}".format(path, e))
                     self._setCompleted(path)
                     queue.task_done()
                     continue
@@ -96,18 +114,19 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         logger.info("Shutting down worker thread")
 
     def _createJobScript(self, fname, workdir, runsh, gpudevice=None):
-        with open(fname, 'w') as f:
-            f.write('#!/bin/bash\n\n')
+        with open(fname, "w") as f:
+            f.write("#!/bin/bash\n\n")
             # Trap kill signals to create sentinel file
-            f.write('\ntrap "touch {}" EXIT SIGTERM\n'.format(os.path.normpath(os.path.join(workdir, self._sentinel))))
-            f.write('\n')
+            f.write(
+                '\ntrap "touch {}" EXIT SIGTERM\n'.format(
+                    os.path.normpath(os.path.join(workdir, self._sentinel))
+                )
+            )
+            f.write("\n")
             if gpudevice is not None:
-                f.write('export CUDA_VISIBLE_DEVICES={}\n'.format(gpudevice))
-            # Trap kill signals to create sentinel file
-            f.write('\ntrap "touch {}" EXIT SIGTERM\n'.format(os.path.normpath(os.path.join(workdir, self._sentinel))))
-            f.write('\n')
-            f.write('cd {}\n'.format(os.path.abspath(workdir)))
-            f.write('{}'.format(runsh))
+                f.write("export CUDA_VISIBLE_DEVICES={}\n\n".format(gpudevice))
+            f.write("cd {}\n".format(os.path.abspath(workdir)))
+            f.write("{}".format(runsh))
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -118,15 +137,15 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                 odir = os.path.join(datadir, simname)
                 os.makedirs(odir, exist_ok=True)
                 if os.path.abspath(odir) != os.path.abspath(workdir):
-                    f.write('\nmv {} {}'.format(' '.join(self.copy), odir))
+                    f.write("\nmv {} {}".format(" ".join(self.copy), odir))
 
         os.chmod(fname, 0o700)
 
     def _setRunning(self, path):
-        self._states[path] = 'R'
+        self._states[path] = "R"
 
     def _setCompleted(self, path):
-        self._states[path] = 'C'
+        self._states[path] = "C"
 
     def retrieve(self):
         """ Retrieves a list of jobs that have completed since the last call
@@ -138,7 +157,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         ret = []
         xx = self._states.copy().keys()
         for i in xx:
-            if self._states[i] == 'C':
+            if self._states[i] == "C":
                 del self._states[i]
                 ret.append(i)
 
@@ -164,17 +183,17 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
         for d in dirs:
             if not os.path.isdir(d):
-                raise NameError('Submit: directory ' + d + ' does not exist.')
+                raise NameError("Submit: directory " + d + " does not exist.")
 
         # if all folders exist, submit
         for d in dirs:
             dirname = os.path.abspath(d)
-            logger.info('Queueing ' + dirname)
+            logger.info("Queueing " + dirname)
 
             runscript = self._getRunScript(d)
             self._cleanSentinel(d)
 
-            self._states[dirname] = 'Q'
+            self._states[dirname] = "Q"
             self._queue.put(dirname)
 
     def inprogress(self):
@@ -186,8 +205,8 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         -------
         >>> app.inprogress()
         """
-        output_run = sum(x == 'R' for x in self._states.values())
-        output_queue = sum(x == 'Q' for x in self._states.values())
+        output_run = sum(x == "R" for x in self._states.values())
+        output_queue = sum(x == "Q" for x in self._states.values())
 
         return output_run + output_queue
 
@@ -199,10 +218,10 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         return list()
 
     def _getmemory(self):
-        total_memory = int(psutil.virtual_memory().total  >> 20)  # Converts bytes to MiB
+        total_memory = int(psutil.virtual_memory().total >> 20)  # Converts bytes to MiB
         nr_devices = len(self._getdevices(_logger=False))
         if nr_devices != 0:
-            return int(total_memory/nr_devices)
+            return int(total_memory / nr_devices)
         else:
             return None
 
@@ -263,49 +282,82 @@ class LocalGPUQueue(_LocalQueue):
 
     def __init__(self):
         super().__init__()
-        self._arg('ngpu', 'int', 'Number of GPU devices that the queue will use. Each simulation will be run on '
-                                 'a different GPU. The queue will use the first `ngpus` devices of the machine.',
-                  None, val.Number(int, '0POS'))
-        self._arg('devices', 'list', 'A list of GPU device indexes on which the queue is allowed to run '
-                                     'simulations. Mutually exclusive with `ngpus`', None, val.Number(int, '0POS'),
-                  nargs='*')
-        self._arg('memory', 'int', 'The amount of RAM memory available for each job. If None, it will be guessed from '
-                                   'total amount of memory and the number of devices', None,
-                  val.Number(int, '0POS'))
+        self._arg(
+            "ngpu",
+            "int",
+            "Number of GPU devices that the queue will use. Each simulation will be run on "
+            "a different GPU. The queue will use the first `ngpus` devices of the machine.",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "devices",
+            "list",
+            "A list of GPU device indexes on which the queue is allowed to run "
+            "simulations. Mutually exclusive with `ngpus`",
+            None,
+            val.Number(int, "0POS"),
+            nargs="*",
+        )
+        self._arg(
+            "memory",
+            "int",
+            "The amount of RAM memory available for each job. If None, it will be guessed from "
+            "total amount of memory and the number of devices",
+            None,
+            val.Number(int, "0POS"),
+        )
 
     def _getdevices(self, _logger=True):
         ngpu = self.ngpu
         devices = self.devices
         if ngpu is not None and devices is not None:
-            raise ValueError('Parameters `ngpu` and `devices` are mutually exclusive.')
+            raise ValueError("Parameters `ngpu` and `devices` are mutually exclusive.")
 
         if ngpu is None and devices is None:
-            logger.info('Trying to determine all GPU devices')
+            logger.info("Trying to determine all GPU devices")
             try:
                 check_output("nvidia-smi -L", shell=True)
-                devices = range(int(check_output("nvidia-smi -L | wc -l", shell=True).decode("ascii")))
+                devices = range(
+                    int(
+                        check_output("nvidia-smi -L | wc -l", shell=True).decode(
+                            "ascii"
+                        )
+                    )
+                )
             except:
                 raise
         elif ngpu is not None:
             devices = range(ngpu)
 
         if devices is None:
-            raise RuntimeError('Could not determine which GPUs to use. Specify the GPUs with the `ngpu` or `devices` '
-                               'parameters')
+            raise RuntimeError(
+                "Could not determine which GPUs to use. Specify the GPUs with the `ngpu` or `devices` "
+                "parameters"
+            )
         else:
-            visible_devices_str = os.getenv('CUDA_VISIBLE_DEVICES')
+            visible_devices_str = os.getenv("CUDA_VISIBLE_DEVICES")
             if visible_devices_str is not None:
-                visible_devices = visible_devices_str.split(',')
+                visible_devices = visible_devices_str.split(",")
                 if _logger:
-                    logger.info('GPU devices requested: {}'.format(','.join(map(str, devices))))
-                    logger.info('GPU devices visible: {}'.format(','.join(map(str, visible_devices))))
-                devices = [dd for dd in devices if dd in visible_devices]  # Only keep the selected visible devices. interest1d of the two lists
-            if _logger: logger.info('Using GPU devices {}'.format(','.join(map(str, devices))))
+                    logger.info(
+                        "GPU devices requested: {}".format(",".join(map(str, devices)))
+                    )
+                    logger.info(
+                        "GPU devices visible: {}".format(
+                            ",".join(map(str, visible_devices))
+                        )
+                    )
+                devices = [
+                    dd for dd in devices if dd in visible_devices
+                ]  # Only keep the selected visible devices. interest1d of the two lists
+            if _logger:
+                logger.info("Using GPU devices {}".format(",".join(map(str, devices))))
         return devices
 
     @property
     def ngpu(self):
-        return self.__dict__['ngpu']
+        return self.__dict__["ngpu"]
 
     @ngpu.setter
     def ngpu(self, value):
@@ -321,7 +373,7 @@ class LocalGPUQueue(_LocalQueue):
 
     @property
     def memory(self):
-        return self.__dict__['memory']
+        return self.__dict__["memory"]
 
     @memory.setter
     def memory(self, value):
@@ -356,34 +408,59 @@ class LocalCPUQueue(_LocalQueue):
 
     def __init__(self):
         super().__init__()
-        self._arg('ncpu', 'int', 'Number of CPU threads per job that the queue will use', 1, val.Number(int, 'POS'))
-        self._arg('maxcpu', 'int', 'Number of CPU threads available to this queue. By default, it takes the all the '
-                                   'CPU thread of the machine.', psutil.cpu_count(), val.Number(int, 'POS'))
-        self._arg('memory', 'int', 'The amount of RAM memory available for each job.', self._getmemory(),
-                  val.Number(int, '0POS'))
+        self._arg(
+            "ncpu",
+            "int",
+            "Number of CPU threads per job that the queue will use",
+            1,
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "maxcpu",
+            "int",
+            "Number of CPU threads available to this queue. By default, it takes the all the "
+            "CPU thread of the machine.",
+            psutil.cpu_count(),
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "memory",
+            "int",
+            "The amount of RAM memory available for each job.",
+            self._getmemory(),
+            val.Number(int, "0POS"),
+        )
 
     def _getdevices(self):
         if self.ncpu > self.maxcpu:
-            raise ValueError('The ncpu ({}) cannot be greater than the maxcpu ({})'.format(self.ncpu, self.maxcpu))
+            raise ValueError(
+                "The ncpu ({}) cannot be greater than the maxcpu ({})".format(
+                    self.ncpu, self.maxcpu
+                )
+            )
         if self.maxcpu > psutil.cpu_count():
-            logger.warning('maxcpu ({}) higher than the total ammount of CPU threads available ({}). '
-                           'Overclocking.'.format(self.maxcpu, psutil.cpu_count()))
+            logger.warning(
+                "maxcpu ({}) higher than the total ammount of CPU threads available ({}). "
+                "Overclocking.".format(self.maxcpu, psutil.cpu_count())
+            )
         devices = int(self.maxcpu / self.ncpu)
-        logger.info("Using {} CPU \"devices\" ({} / {})".format(devices, self.maxcpu, self.ncpu))
+        logger.info(
+            'Using {} CPU "devices" ({} / {})'.format(devices, self.maxcpu, self.ncpu)
+        )
         return [None] * devices
 
     def _getmemory(self):
         from math import floor
 
-        memory = psutil.virtual_memory().total/1024**2
-        memory *= max(0, min(1, self.ncpu/psutil.cpu_count())) # Clamp to [0, 1]
+        memory = psutil.virtual_memory().total / 1024 ** 2
+        memory *= max(0, min(1, self.ncpu / psutil.cpu_count()))  # Clamp to [0, 1]
         memory = int(floor(memory))
 
         return memory
 
     @property
     def ncpu(self):
-        return self.__dict__['ncpu']
+        return self.__dict__["ncpu"]
 
     @ncpu.setter
     def ncpu(self, value):
@@ -399,15 +476,17 @@ class LocalCPUQueue(_LocalQueue):
 
     @property
     def memory(self):
-        return self.__dict__['memory']
+        return self.__dict__["memory"]
 
     @memory.setter
     def memory(self, value):
         self.memory = value
 
+
 if __name__ == "__main__":
     import os
     import jobqueues
     import inspect
+
     homeDir = os.path.dirname(inspect.getfile(jobqueues))
 
