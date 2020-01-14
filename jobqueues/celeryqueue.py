@@ -8,6 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 class CeleryQueue(LocalGPUQueue):
+    """ Beta: Queue with support for Celery local queueing
+
+    Start a celery server with:
+    >>> docker run -d -p 5462:5672 rabbitmq
+    >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu,celery -c 1
+    """
+
     def __init__(self):
         super().__init__()
         self._arg(
