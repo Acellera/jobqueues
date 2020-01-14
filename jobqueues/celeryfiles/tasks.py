@@ -2,11 +2,6 @@ from jobqueues.celeryfiles.celery import app
 
 
 @app.task
-def add(x, y):
-    return x + y
-
-
-@app.task
 def run_simulation(folder, deviceid, sentinel, datadir, copyextensions):
     from subprocess import call
     import os
