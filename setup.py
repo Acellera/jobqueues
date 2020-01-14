@@ -18,7 +18,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         url="https://github.com/acellera/jobqueues/",
         classifiers=[
-            "Programming Language :: Python :: None",
+            "Programming Language :: Python :: 3",
             "Operating System :: POSIX :: Linux",
         ],
         packages=setuptools.find_packages(
