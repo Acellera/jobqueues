@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     setuptools.setup(
         name="jobqueues",
-        version="0.1.8",
+        version="unpackaged",
         author="Acellera",
         author_email="info@acellera.com",
         description="Wrappers for various queueing systems in python.",

@@ -4,4 +4,4 @@
 # No redistribution in whole or part
 #
 def version():
-    return "0.1.8"
+    return "unpackaged"
