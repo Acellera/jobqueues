@@ -13,137 +13,180 @@ import time
 import zipfile
 
 from jobqueues.simqueue import SimQueue
-from protocolinterface import ProtocolInterface
-from protocolinterface.validators import Number, String
+from protocolinterface import ProtocolInterface, val
 
 logger = logging.getLogger(__name__)
 
 
+def _symlinkorcopy(ff, targetdir, symlink):
+    if symlink:
+        relpath = os.path.relpath(ff, os.path.dirname(os.path.abspath(targetdir)))
+        os.symlink(relpath, targetdir)
+    else:
+        shutil.copytree(ff, targetdir)
+
+
 class PlayQueue(SimQueue, ProtocolInterface):
     def __init__(self):
+        from playmolecule import Session, Job
 
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
 
         self._arg(
-            "ngpu", "int", "Number of GPUs", default=0, validator=Number(int, "0POS")
+            "parentjob",
+            "playmolecule.job.Job",
+            "Spawn all jobs as children of this job",
+            default=None,
+            required=False,
+            validator=val.Object(Job),
         )
         self._arg(
-            "ncpu", "int", "Number of CPUs", default=1, validator=Number(int, "0POS")
+            "session",
+            "playmolecule.session.Session",
+            "The current PMWS Session object",
+            required=True,
+            validator=val.Object(Session),
+        )
+        self._arg("jobname", "str", "Job name (identifier)", None, val.String())
+        self._arg("group", "str", "Group name (identifier)", None, val.String())
+        self._arg(
+            "ngpu",
+            "int",
+            "Number of GPUs",
+            default=0,
+            validator=val.Number(int, "0POS"),
+        )
+        self._arg(
+            "ncpu",
+            "int",
+            "Number of CPUs",
+            default=1,
+            validator=val.Number(int, "0POS"),
         )
         self._arg(
             "memory",
             "int",
             "Amount of memory (MB)",
             default=1000,
-            validator=Number(int, "POS"),
+            validator=val.Number(int, "POS"),
+        )
+        self._arg("app", "str", "App name", required=True, validator=val.String())
+        self._arg(
+            "configname",
+            "str",
+            "Name of the file containing the individual job configurations yaml or json. Not a filepath, just the name. All submitted folders must contain this file.",
+            None,
+            val.String(),
         )
         self._arg(
-            "max_jobs",
-            "int",
-            "Maximum number of concurent jobs",
-            default=sys.maxsize,
-            validator=Number(int, "POS"),
+            "retrievedir",
+            "str",
+            "Directory in which to retrieve the results of jobs",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "datadir",
+            "str",
+            "Directory in which to copy or symlink the output directory.",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "symlink",
+            "bool",
+            "Set to False to copy instead of symlink the directories from the retrievedir to datadir",
+            True,
+            val.Boolean(),
+        )
+        self._arg(
+            "copy",
+            "list",
+            "A list of file names or globs for the files to copy or symlink from retrievedir to datadir.",
+            ("/",),
+            val.String(),
+            nargs="*",
         )
 
-        self._arg("token", "str", "PM token", required=True, validator=String())
-        self._arg("app", "str", "App name", required=True, validator=String())
+    def submit(self, folders):
+        from jobqueues.util import ensurelist
+        import uuid
 
-        self._dirs = {}
+        if self.group is None:
+            self.group = uuid.uuid4()
 
-    def _getSession(self):
+        for f in ensurelist(folders):
+            if self.jobname is None:
+                name = os.path.basename(os.path.abspath(f))
+            else:
+                name = self.jobname
 
-        from playmolecule import Session
-
-        return Session(self.token)
-
-    @staticmethod
-    def _getCurrentJobID():
-        # TODO this could be part of PM API
-
-        configFile = "/data/in/config"
-
-        if not os.path.exists(configFile):
-            return None
-
-        with open(configFile) as fd:
-            return json.load(fd)["execid"]
-
-    def _makeZIP(self, dir_):
-
-        zipFile = os.path.join(dir_, "input.zip")
-
-        files = os.listdir(dir_)
-        with zipfile.ZipFile(zipFile, "w") as zf:
-            for file in files:
-                zf.write(os.path.join(dir_, file), arcname=file)
-
-        return zipFile
-
-    def submit(self, dirs):
-
-        logger.info(f"Maximum number of concurrent jobs: {self.max_jobs}")
-
-        dirs = [dirs,] if isinstance(dirs, str) else dirs
-        for dir_ in dirs:
-
-            # Delay submission
-            while self.inprogress() >= self.max_jobs:
-                time.sleep(5)
-
-            # Submit a job
-            job = self._getSession().startApp(self.app)
-            job.input = self._makeZIP(dir_)  # TODO this is Psi4 specific
-            job.submit(_logger=False, childOf=self._getCurrentJobID())
-            self._dirs[job._execid] = dir_
-            logger.info(f"Submitted job {job._execid}:")
-            logger.info(f"    App name: {self.app}")
-            logger.info(f"    Input directory: {dir_}")
-            logger.info(
-                f"    Resources: {self.ngpu} GPUs, {self.ncpu} CPUs, {self.memory} MB of memory"
+            job = self.session.startApp(self.app)
+            job.readArguments(os.path.join(f, self.configname))
+            job.name = name
+            job.group = self.group
+            job.submit(
+                childOf=self.parentjob._execid if self.parentjob is not None else None
             )
 
+    def _getJobs(self, returnDict, status):
+        if self.parentjob is not None:
+            jobs = self.parentjob.getChildren(returnDict=True, status=status)
+        else:
+            if self.group is None:
+                raise RuntimeError(
+                    "If no parent job is specified you need to specify a job group."
+                )
+            jobs = self.session.getJobsByGroup(
+                self.group, status=status, returnDict=True
+            )
+        if returnDict:
+            return jobs
+        else:
+            return jobs[0], jobs[1]
+
     def inprogress(self):
+        from playmolecule import JobStatus
 
-        # TODO updated to use playmolecule.Job.getChildren
-        #      see https://github.com/Acellera/htmd/pull/910
+        prog_status = (
+            JobStatus.RUNNING,
+            JobStatus.WAITING_DATA,
+            JobStatus.QUEUED,
+            JobStatus.SLEEPING,
+        )
 
-        counter = 0
-        for jobID in self._dirs:
-            job = self._getSession().getJob(id=jobID)
-            status = job.getStatus(_logger=False)
-            if status in (0, 1, 2, 3, 6, 7):  # Queuing, running, etc.
-                counter += 1
-            elif status in (4, 5):  # Completed or errored
-                pass
-            else:
-                raise ValueError("Unknown job status")
-
-        return counter
+        jobs = self._getJobs(returnDict=True, status=prog_status)
+        return len(jobs)
 
     def retrieve(self):
+        import shutil
+        from glob import glob
+        from playmolecule import JobStatus
+        from jobqueues.util import ensurelist
 
-        for jobID, dir_ in list(self._dirs.items()):
-            job = self._getSession().getJob(id=jobID)
-            with tempfile.TemporaryDirectory() as tmpDir:
-                status = job.getStatus(_logger=False)
-                if status == 4:
-                    logger.info(f"Job {jobID} completed (status: {status}):")
-                    outDir = job.retrieve(_logger=False, path=tmpDir)
-                    for file in os.listdir(outDir):
-                        shutil.copy(os.path.join(outDir, file), dir_)
-                    self._dirs.pop(jobID)
-                    logger.info(f"    Retrieved results to {dir_}")
-                elif status == 5:
-                    logger.info(f"Job {jobID} failed (status: {status})")
-                    self._dirs.pop(jobID)
-                elif status in (0, 1, 2, 3, 6, 7):
-                    pass
-                else:
-                    raise ValueError("Unknown job status")
+        retrievedir = self.retrievedir if self.retrievedir is not None else self.datadir
+
+        jobs = self._getJobs(
+            returnDict=False, status=(JobStatus.COMPLETED, JobStatus.ERROR)
+        )
+
+        for job, st in zip(jobs, statuses):
+            targetdir = os.path.join(self.datadir, job.name)
+
+            retdir = job.retrieve(path=retrievedir, skip=True)
+
+            if st != JobStatus.ERROR:
+                for fglob in ensurelist(self.copy):
+                    currglob = os.path.join(retdir, fglob)
+                    if "*" in currglob:
+                        for ff in glob(currglob):
+                            _symlinkorcopy(ff, targetdir, self.symlink)
+                    else:
+                        _symlinkorcopy(currglob, targetdir, self.symlink)
 
     def stop(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @property
     def ncpu(self):
