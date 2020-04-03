@@ -15,7 +15,7 @@ class CeleryQueue(LocalGPUQueue):
     >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu,celery -c 1
     """
 
-    def __init__(self):
+    def __init__(self, _configapp=None, _configfile=None):
         super().__init__()
         self._arg(
             "datadir",

@@ -280,7 +280,7 @@ class LocalGPUQueue(_LocalQueue):
 
     """
 
-    def __init__(self):
+    def __init__(self, _configapp=None, _configfile=None):
         super().__init__()
         self._arg(
             "ngpu",
