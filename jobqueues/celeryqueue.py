@@ -32,6 +32,7 @@ class CeleryQueue(LocalGPUQueue):
             val.String(),
             nargs="*",
         )
+        self._arg("jobname", "str", "UNUSED: Job name (identifier)", None, val.String())
         self._tasks = []
 
     def submit(self, dirs):
