@@ -38,8 +38,8 @@ class LsfQueue(SimQueue, ProtocolInterface):
         <'yes' or 'no'>}, {'j_exclusive': <'yes' or 'no'>})
     ncpu : int, default=1
         Number of CPUs to use for a single job
-    memory : int, default=4000
-        Amount of memory per job (MiB)
+    memory : int, default=4000000
+        Amount of memory per job (KB)
     walltime : int, default=None
         Job timeout (hour:min or min)
     resources : list, default=None
@@ -76,7 +76,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
         "ngpu": 1,
         "gpu_options": None,
         "ncpu": 1,
-        "memory": 4000,
+        "memory": 4000000,
         "walltime": None,
         "resources": None,
         "envvars": "ACEMD_HOME",
@@ -139,7 +139,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
         self._arg(
             "memory",
             "int",
-            "Amount of memory per job (MiB)",
+            "Amount of memory per job (KB)",
             self._defaults["memory"],
             val.Number(int, "0POS"),
         )
