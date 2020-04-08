@@ -15,7 +15,7 @@ class CeleryQueue(LocalGPUQueue):
     >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu,celery -c 1
     """
 
-    def __init__(self, _configapp=None, _configfile=None):
+    def __init__(self, _configapp=None, _configfile=None, _logger=True):
         from jobqueues.celeryfiles.celery import app
 
         super().__init__()
@@ -37,12 +37,13 @@ class CeleryQueue(LocalGPUQueue):
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._app = app
         self._workers = list(app.control.inspect().ping().keys())
-        if len(self._workers) == 0:
-            logger.error("CeleryQueue found no active workers...")
-        else:
-            logger.info(
-                f"CeleryQueue found the following active workers: {self._workers}"
-            )
+        if _logger:
+            if len(self._workers) == 0:
+                logger.error("CeleryQueue found no active workers...")
+            else:
+                logger.info(
+                    f"CeleryQueue found the following active workers: {self._workers}"
+                )
 
         self._insp = self._app.control.inspect(self._workers)
 
