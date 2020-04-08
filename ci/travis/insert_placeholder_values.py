@@ -21,7 +21,6 @@ with open("requirements.txt", "r") as f:
 with open("setup.py", "r") as f:
     text = f.read()
 
-text = text.replace("unpackaged", version)
 text = text.replace("Python :: 3", f"Python :: {os.getenv('CONDA_PY')}")
 
 with open("setup.py", "w") as f:

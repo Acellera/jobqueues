@@ -1,5 +1,16 @@
 import setuptools
+import subprocess
+import os
 
+try:
+    version = (
+        subprocess.check_output(["git", "describe", "--abbrev=0", "--tags"])
+        .strip()
+        .decode("utf-8")
+    )
+except Exception as e:
+    print("Could not get version tag. Defaulting to version 0")
+    version = "0"
 
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
@@ -10,7 +21,7 @@ if __name__ == "__main__":
 
     setuptools.setup(
         name="jobqueues",
-        version="unpackaged",
+        version=version,
         author="Acellera",
         author_email="info@acellera.com",
         description="Wrappers for various queueing systems in python.",
