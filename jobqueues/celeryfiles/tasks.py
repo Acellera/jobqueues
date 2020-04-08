@@ -2,7 +2,7 @@ from jobqueues.celeryfiles.celery import app
 
 
 @app.task
-def run_simulation(folder, deviceid, sentinel, datadir, copyextensions):
+def run_simulation(folder, deviceid, sentinel, datadir, copyextensions, jobname=None):
     from subprocess import call
     import os
     import time
