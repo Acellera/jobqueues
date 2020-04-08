@@ -87,6 +87,9 @@ class CeleryQueue(LocalGPUQueue):
         return tasks
 
     def inprogress(self):
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
         tasks = self._getTasks()
 
         inprog = 0
@@ -96,6 +99,9 @@ class CeleryQueue(LocalGPUQueue):
         return inprog
 
     def stop(self):
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
         tasks = self._getTasks()
 
         for task in tasks:
