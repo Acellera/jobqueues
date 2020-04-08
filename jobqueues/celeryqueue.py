@@ -94,7 +94,7 @@ class CeleryQueue(LocalGPUQueue):
 
         inprog = 0
         for task in tasks:
-            if task["kwargs"]["jobname"] == self._jobname:
+            if task["kwargs"]["jobname"] == self.jobname:
                 inprog += 1
         return inprog
 
@@ -105,7 +105,7 @@ class CeleryQueue(LocalGPUQueue):
         tasks = self._getTasks()
 
         for task in tasks:
-            if task["kwargs"]["jobname"] == self._jobname:
+            if task["kwargs"]["jobname"] == self.jobname:
                 self._app.control.revoke(task["id"], terminate=True)
 
     @property
