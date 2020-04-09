@@ -16,7 +16,17 @@ class CeleryQueue(LocalGPUQueue):
     """
 
     def __init__(self, _configapp=None, _configfile=None, _logger=True):
-        from jobqueues.celeryfiles.celery import app
+        try:
+            from jobqueues.celeryfiles.celery import app
+        except Exception as e:
+            raise RuntimeError(f"Could not import Celery app with error: {e}")
+
+        try:
+            from jobqueues.celeryfiles.tasks import run_simulation
+
+            self._submitfunc = run_simulation
+        except Exception as e:
+            raise RuntimeError(f"Could not import CeleryQueue task with error {e}")
 
         super().__init__()
         self._arg(
@@ -36,25 +46,27 @@ class CeleryQueue(LocalGPUQueue):
         )
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._app = app
-        self._workers = list(app.control.inspect().ping().keys())
+        try:
+            self._workers = list(app.control.inspect().ping().keys())
+        except Exception as e:
+            raise RuntimeError(f"Could not list Celery workers with error: {e}")
+
+        if len(self._workers) == 0:
+            raise RuntimeError("Could not find any running Celery workers.")
+
         if _logger:
-            if len(self._workers) == 0:
-                logger.error("CeleryQueue found no active workers...")
-            else:
-                logger.info(
-                    f"CeleryQueue found the following active workers: {self._workers}"
-                )
+            logger.info(
+                f"CeleryQueue found the following active workers: {self._workers}"
+            )
 
         self._insp = self._app.control.inspect(self._workers)
 
     def submit(self, dirs):
-        from jobqueues.celeryfiles.tasks import run_simulation
-
         dirs = self._submitinit(dirs)
 
         for d in dirs:
             if not os.path.isdir(d):
-                raise NameError("Submit: directory " + d + " does not exist.")
+                raise RuntimeError("Submit: directory " + d + " does not exist.")
 
         # if all folders exist, submit
         for d in dirs:
@@ -64,7 +76,7 @@ class CeleryQueue(LocalGPUQueue):
             runscript = self._getRunScript(dirname)
             self._cleanSentinel(dirname)
 
-            async_res = run_simulation.delay(
+            async_res = self._submitfunc.delay(
                 dirname,
                 0,
                 self._sentinel,

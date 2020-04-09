@@ -83,7 +83,9 @@ class LsfQueue(SimQueue, ProtocolInterface):
         "prerun": None,
     }
 
-    def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
+    def __init__(
+        self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
+    ):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
         self._arg(

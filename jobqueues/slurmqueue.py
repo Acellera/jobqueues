@@ -79,7 +79,9 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         "prerun": None,
     }
 
-    def __init__(self, _configapp=None, _configfile=None, _findExecutables=True):
+    def __init__(
+        self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
+    ):
         SimQueue.__init__(self)
         ProtocolInterface.__init__(self)
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
@@ -215,11 +217,12 @@ class SlurmQueue(SimQueue, ProtocolInterface):
                     try:
                         with open(_configfile, "r") as f:
                             profile = yaml.load(f, Loader=yaml.FullLoader)
-                        logger.info(
-                            "Loaded Slurm configuration YAML file {}".format(
-                                _configfile
+                        if _logger:
+                            logger.info(
+                                "Loaded Slurm configuration YAML file {}".format(
+                                    _configfile
+                                )
                             )
-                        )
                     except:
                         logger.warning(
                             "Could not load YAML file {}".format(_configfile)
@@ -240,7 +243,8 @@ class SlurmQueue(SimQueue, ProtocolInterface):
                         )
                     for p in properties:
                         setattr(self, p, properties[p])
-                        logger.info("Setting {} to {}".format(p, properties[p]))
+                        if _logger:
+                            logger.info("Setting {} to {}".format(p, properties[p]))
             else:
                 raise RuntimeError(
                     "No Slurm configuration YAML file defined for the configapp"
@@ -257,6 +261,18 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             self._qinfo = SlurmQueue._find_binary("sinfo")
             self._qcancel = SlurmQueue._find_binary("scancel")
             self._qstatus = SlurmQueue._find_binary("squeue")
+            self._checkQueue()
+
+    def _checkQueue(self):
+        # Check if the slurm daemon is running by executing squeue
+        try:
+            ret = check_output([self._qstatus])
+        except CalledProcessError as e:
+            raise RuntimeError(
+                f"SLURM squeue command failed with error: {e} and errorcode: {e.returncode}"
+            )
+        except Exception as e:
+            raise RuntimeError(f"SLURM squeue command failed with error: {e}")
 
     @staticmethod
     def _find_binary(binary):
