@@ -47,6 +47,8 @@ class CeleryQueue(LocalGPUQueue):
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._app = app
         try:
+            # This will currently hang instead of crashing if rabbit is down https://github.com/celery/celery/issues/5139
+            # Really annoying issue. Will need to wait for a fix in celery
             self._workers = list(app.control.inspect().ping().keys())
         except Exception as e:
             raise RuntimeError(f"Could not list Celery workers with error: {e}")
