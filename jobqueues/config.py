@@ -8,10 +8,10 @@ import logging
 
 logger = logging.getLogger(__file__)
 
-_config = {"lsf": None, "slurm": None}
+_config = {"lsf": None, "slurm": None, "sge": None}
 
 
-def config(lsf=_config["lsf"], slurm=_config["slurm"]):
+def config(lsf=_config["lsf"], slurm=_config["slurm"], sge=_config["sge"]):
     """
     Function to temporarily change configuration variables.
 
@@ -24,3 +24,4 @@ def config(lsf=_config["lsf"], slurm=_config["slurm"]):
     """
     _config["lsf"] = lsf
     _config["slurm"] = slurm
+    _config["sge"] = sge
