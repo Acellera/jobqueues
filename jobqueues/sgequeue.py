@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class SGEQueue(SimQueue, ProtocolInterface):
+class SgeQueue(SimQueue, ProtocolInterface):
     """ Queue system for Sun Grid Engine
 
     #TODO: SGE documentation
@@ -26,7 +26,7 @@ class SGEQueue(SimQueue, ProtocolInterface):
 
     Examples
     --------
-    >>> s = SGEQueue()
+    >>> s = SgeQueue()
     >>> s.jobname = 'simulation1'
     >>> s.queue = 'multiscale'
     >>> s.submit('/my/runnable/folder/')  # Folder containing a run.sh bash script
@@ -191,10 +191,10 @@ class SGEQueue(SimQueue, ProtocolInterface):
 
         # Find executables
         if _findExecutables:
-            self._qsubmit = SGEQueue._find_binary("qsub")
-            self._qinfo = SGEQueue._find_binary("qhost")
-            self._qcancel = SGEQueue._find_binary("qdel")
-            self._qstatus = SGEQueue._find_binary("qstat")
+            self._qsubmit = SgeQueue._find_binary("qsub")
+            self._qinfo = SgeQueue._find_binary("qhost")
+            self._qcancel = SgeQueue._find_binary("qdel")
+            self._qstatus = SgeQueue._find_binary("qstat")
             self._checkQueue()
 
     def _checkQueue(self):
