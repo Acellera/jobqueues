@@ -12,6 +12,7 @@ from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
 from jobqueues.config import _config
+from math import ceil
 import yaml
 import logging
 
@@ -227,7 +228,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
             f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
             f.write("#$ -pe thread {}\n".format(self.ncpu))
             f.write("#$ -l ngpus={}\n".format(self.ngpu))
-            f.write("#$ -l h_vmem={}\n".format(self.memory))
+            f.write("#$ -l h_vmem={}G\n".format(int(ceil(self.memory / 1000))))
             f.write("#$ -wd {}\n".format(workdir))
             # f.write("#$ -o {}\n".format(self.outputstream))
             # f.write("#$ -e {}\n".format(self.errorstream))
