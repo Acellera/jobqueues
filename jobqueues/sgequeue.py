@@ -229,8 +229,8 @@ class SgeQueue(SimQueue, ProtocolInterface):
             f.write("#$ -l ngpus={}\n".format(self.ngpu))
             f.write("#$ -l h_vmem={}\n".format(self.memory))
             f.write("#$ -wd {}\n".format(workdir))
-            f.write("#$ -o {}\n".format(self.outputstream))
-            f.write("#$ -e {}\n".format(self.errorstream))
+            # f.write("#$ -o {}\n".format(self.outputstream))
+            # f.write("#$ -e {}\n".format(self.errorstream))
             if self.envvars is not None:
                 f.write("#$ -v {}\n".format(self.envvars))
             if self.walltime is not None:
