@@ -41,10 +41,10 @@ class SgeQueue(SimQueue, ProtocolInterface):
         "ngpu": 1,
         "gpu_options": None,
         "ncpu": 1,
-        "memory": 4000,
+        "memory": None,
         "walltime": None,
         "resources": None,
-        "envvars": "ACEMD_HOME",
+        "envvars": "ACEMD_HOME,HTMD_LICENSE_FILE",
         "prerun": None,
     }
 
@@ -228,7 +228,8 @@ class SgeQueue(SimQueue, ProtocolInterface):
             f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
             f.write("#$ -pe thread {}\n".format(self.ncpu))
             f.write("#$ -l ngpus={}\n".format(self.ngpu))
-            f.write("#$ -l h_vmem={}G\n".format(int(ceil(self.memory / 1000))))
+            if self.memory is not None:
+                f.write("#$ -l h_vmem={}G\n".format(int(ceil(self.memory / 1000))))
             f.write("#$ -wd {}\n".format(workdir))
             # f.write("#$ -o {}\n".format(self.outputstream))
             # f.write("#$ -e {}\n".format(self.errorstream))
