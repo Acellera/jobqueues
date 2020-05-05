@@ -224,7 +224,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         with open(fname, "w") as f:
             f.write("#!/bin/bash\n")
             f.write("#\n")
-            f.write("#$ -N {}\n".format(self.jobname))
+            f.write("#$ -N PM{}\n".format(self.jobname))
             f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
             f.write("#$ -pe thread {}\n".format(self.ncpu))
             f.write("#$ -l ngpus={}\n".format(self.ngpu))
@@ -268,7 +268,8 @@ class SgeQueue(SimQueue, ProtocolInterface):
 
     def _autoJobName(self, path):
         return (
-            os.path.basename(os.path.abspath(path))
+            "PM"
+            + os.path.basename(os.path.abspath(path))
             + "_"
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
@@ -307,24 +308,17 @@ class SgeQueue(SimQueue, ProtocolInterface):
             except:
                 raise
 
-    def inprogress(self):
-        """ Returns the sum of the number of running and queued workunits of the specific group in the engine.
-
-        Returns
-        -------
-        total : int
-            Total running and queued workunits
-        """
-        import time
-        import getpass
+    def _getJobStatusTree(self):
         import xml.etree.ElementTree as ET
+        import getpass
+        import time
 
         if self.queue is None:
             raise ValueError("The queue needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
-        user = getpass.getuser()
 
+        user = getpass.getuser()
         cmd = [
             self._qstatus,
             "-u",
@@ -349,33 +343,42 @@ class SgeQueue(SimQueue, ProtocolInterface):
             break
 
         logger.debug(ret.decode("ascii"))
+        return ET.fromstring(ret.decode("ascii").strip())
 
-        root = ET.fromstring(ret.decode("ascii").strip())
+    def inprogress(self):
+        """ Returns the sum of the number of running and queued workunits of the specific group in the engine.
+
+        Returns
+        -------
+        total : int
+            Total running and queued workunits
+        """
+        root = self._getJobStatusTree()
         jobs = root.find("queue_info").findall("job_list")
         if len(jobs) == 0:
             return 0
 
         count = 0
         for job in jobs:
-            if job.find("JB_name").text == self.jobname:
+            if job.find("JB_name").text == "PM" + self.jobname:
                 count += 1
         return count
 
     def stop(self):
         """ Cancels all currently running and queued jobs
         """
-        import getpass
+        root = self._getJobStatusTree()
+        jobs = root.find("queue_info").findall("job_list")
+        if len(jobs) == 0:
+            return
 
-        if self.queue is None:
-            raise ValueError("The queue needs to be defined.")
-        if self.jobname is None:
-            raise ValueError("The jobname needs to be defined.")
-        user = getpass.getuser()
-        for q in ensurelist(self.queue):
-            cmd = [self._qcancel, "-N", self.jobname, "-u", user, "-q", q]
-            logger.debug(cmd)
-            ret = check_output(cmd, stderr=DEVNULL)
-            logger.debug(ret.decode("ascii"))
+        for job in jobs:
+            if job.find("JB_name").text == "PM" + self.jobname:
+                jobid = job.find("JB_job_number").text
+                cmd = [self._qcancel, jobid]
+                logger.debug(cmd)
+                ret = check_output(cmd, stderr=DEVNULL)
+                logger.debug(ret.decode("ascii"))
 
     @property
     def ncpu(self):
