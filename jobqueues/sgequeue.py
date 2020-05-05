@@ -224,7 +224,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         with open(fname, "w") as f:
             f.write("#!/bin/bash\n")
             f.write("#\n")
-            f.write("#$ -N PM{}\n".format(self.jobname))
+            f.write("#$ -N {}\n".format(self.jobname))
             f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
             f.write("#$ -pe thread {}\n".format(self.ncpu))
             f.write("#$ -l ngpus={}\n".format(self.ngpu))
@@ -317,39 +317,49 @@ class SgeQueue(SimQueue, ProtocolInterface):
         """
         import time
         import getpass
+        import xml.etree.ElementTree as ET
 
         if self.queue is None:
             raise ValueError("The queue needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
         user = getpass.getuser()
-        l_total = 0
-        for q in ensurelist(self.queue):
-            cmd = [self._qstatus, "-N", self.jobname, "-u", user, "-q", q]
-            logger.debug(cmd)
 
-            # This command randomly fails so I need to allow it to repeat or it crashes adaptive
-            tries = 0
-            while tries < 3:
-                try:
-                    ret = check_output(cmd, stderr=DEVNULL)
-                except CalledProcessError:
-                    if tries == 2:
-                        raise
-                    tries += 1
-                    time.sleep(3)
-                    continue
-                break
+        cmd = [
+            self._qstatus,
+            "-u",
+            user,
+            "-q",
+            ",".join(ensurelist(self.queue)),
+            "-xml",
+        ]
+        logger.debug(cmd)
 
-            logger.debug(ret.decode("ascii"))
+        # This command randomly fails so I need to allow it to repeat or it crashes adaptive
+        tries = 0
+        while tries < 3:
+            try:
+                ret = check_output(cmd, stderr=DEVNULL)
+            except CalledProcessError:
+                if tries == 2:
+                    raise
+                tries += 1
+                time.sleep(3)
+                continue
+            break
 
-            # TODO: check lines and handle errors
-            l = ret.decode("ascii").split("\n")
-            l = len(l) - 2
-            if l < 0:
-                l = 0  # something odd happened
-            l_total += l
-        return l_total
+        logger.debug(ret.decode("ascii"))
+
+        root = ET.fromstring(ret.decode("ascii").strip())
+        jobs = root.find("queue_info").findall("job_list")
+        if len(jobs) == 0:
+            return 0
+
+        count = 0
+        for job in jobs:
+            if job.find("JB_name").text == self.jobname:
+                count += 1
+        return count
 
     def stop(self):
         """ Cancels all currently running and queued jobs
