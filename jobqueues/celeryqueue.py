@@ -121,7 +121,8 @@ class CeleryQueue(LocalGPUQueue):
 
         for task in tasks:
             if task["kwargs"]["jobname"] == self.jobname:
-                self._app.control.revoke(task["id"], terminate=True)
+                # Due to this issue https://github.com/celery/celery/issues/2727 I need to send signal SIGUSR1 to kill the job correctly
+                self._app.control.revoke(task["id"], terminate=True, signal="SIGUSR1")
 
     @property
     def ngpu(self):
