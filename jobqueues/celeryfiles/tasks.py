@@ -1,4 +1,5 @@
 from jobqueues.celeryfiles.celery import app
+from celery.exceptions import SoftTimeLimitExceeded
 
 
 @app.task
@@ -21,6 +22,9 @@ def run_simulation(folder, deviceid, sentinel, datadir, copyextensions, jobname=
                 ["/bin/sh", jobsh], stdout=fout, stderr=fout,
             )
         # logger.debug(ret)
+    except SoftTimeLimitExceeded:
+        # The SoftTimeLimitExceeded exception is a hack because SIGTERM doesn't work in Celery. See celeryqueue.py comment.
+        print(f"Job {jobname} has been cancelled by the user")
     except Exception as e:
         # logger.error("Error in simulation {}. {}".format(folder, e))
         raise e
