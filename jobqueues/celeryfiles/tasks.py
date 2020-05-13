@@ -1,5 +1,13 @@
 from jobqueues.celeryfiles.celery import app
 from celery.exceptions import SoftTimeLimitExceeded
+import psutil
+
+
+def kill(proc_pid):
+    process = psutil.Process(proc_pid)
+    for proc in process.children(recursive=True):
+        proc.kill()
+    process.kill()
 
 
 @app.task
@@ -20,13 +28,13 @@ def run_simulation(folder, deviceid, sentinel, datadir, copyextensions, jobname=
     try:
         with open(stdfile, "a") as fout:
             process = subprocess.Popen(
-                ["/bin/sh", jobsh], stdout=fout, stderr=fout, shell=True
+                ["/bin/sh", jobsh], stdout=fout, stderr=fout, shell=False
             )
-            process.wait()
+            _ = process.communicate()
     except SoftTimeLimitExceeded:
         # The SoftTimeLimitExceeded exception is a hack because SIGTERM doesn't work in Celery. See celeryqueue.py comment.
         if process is not None:
-            process.kill()
+            kill(process.pid)
         print(f"Job {jobname} has been cancelled by the user")
     except Exception as e:
         raise e
@@ -39,9 +47,8 @@ def _createJobScript(
 
     with open(fname, "w") as f:
         f.write("#!/bin/bash\n\n")
-        # Trap kill signals to create sentinel file and kill children https://stackoverflow.com/a/2173421
         f.write(
-            '\ntrap "touch {} && trap - SIGTERM && kill -- -$$" EXIT SIGTERM SIGINT\n'.format(
+            '\ntrap "touch {}" EXIT SIGTERM SIGINT\n'.format(
                 os.path.normpath(os.path.join(workdir, sentinel))
             )
         )
