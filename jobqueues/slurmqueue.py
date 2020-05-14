@@ -450,13 +450,18 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         """
         import getpass
 
-        if self.partition is None:
-            raise ValueError("The partition needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
+
         user = getpass.getuser()
-        for q in ensurelist(self.partition):
-            cmd = [self._qcancel, "-n", self.jobname, "-u", user, "-p", q]
+        if self.partition is not None:
+            for q in ensurelist(self.partition):
+                cmd = [self._qcancel, "-n", self.jobname, "-u", user, "-p", q]
+                logger.debug(cmd)
+                ret = check_output(cmd)
+                logger.debug(ret.decode("ascii"))
+        else:
+            cmd = [self._qcancel, "-n", self.jobname, "-u", user]
             logger.debug(cmd)
             ret = check_output(cmd)
             logger.debug(ret.decode("ascii"))
