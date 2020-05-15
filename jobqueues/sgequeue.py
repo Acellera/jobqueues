@@ -314,20 +314,14 @@ class SgeQueue(SimQueue, ProtocolInterface):
         import getpass
         import time
 
-        if self.queue is None:
-            raise ValueError("The queue needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
 
         user = getpass.getuser()
-        cmd = [
-            self._qstatus,
-            "-u",
-            user,
-            "-q",
-            ",".join(ensurelist(self.queue)),
-            "-xml",
-        ]
+        cmd = [self._qstatus, "-u", user, "-xml"]
+        if self.queue is not None:
+            cmd += ["-q", ",".join(ensurelist(self.queue))]
+
         logger.debug(cmd)
 
         # This command randomly fails so I need to allow it to repeat or it crashes adaptive

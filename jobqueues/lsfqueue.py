@@ -423,11 +423,19 @@ class LsfQueue(SimQueue, ProtocolInterface):
         """
         import getpass
 
-        if self.queue is None:
-            raise ValueError("The queue needs to be defined.")
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
         user = getpass.getuser()
-        for q in ensurelist(self.queue):
-            cmd = [self._qcancel, "-J", self.jobname, "-u", user, "-q", q]
+
+        if self.queue is not None:
+            for q in ensurelist(self.queue):
+                cmd = [self._qcancel, "-J", self.jobname, "-u", user, "-q", q]
+                logger.debug(cmd)
+                ret = check_output(cmd, stderr=DEVNULL)
+                logger.debug(ret.decode("ascii"))
+        else:
+            cmd = [self._qcancel, "-J", self.jobname, "-u", user]
             logger.debug(cmd)
             ret = check_output(cmd, stderr=DEVNULL)
             logger.debug(ret.decode("ascii"))
