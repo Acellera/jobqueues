@@ -10,6 +10,7 @@ import string
 from subprocess import check_output, CalledProcessError
 from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
+from jobqueues.config import loadConfig
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,9 @@ class PBSQueue(SimQueue, ProtocolInterface):
     >>> s.submit('/my/runnable/folder/')  # Folder containing a run.sh bash script
     """
 
-    def __init__(self):
+    def __init__(
+        self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
+    ):
         super().__init__()
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._arg("queue", "str", "The queue to run on", None, val.String())
@@ -114,11 +117,14 @@ class PBSQueue(SimQueue, ProtocolInterface):
             "scratch_local", "int", "Local scratch in MB", None, val.Number(int, "0POS")
         )
 
+        loadConfig(self, "pbs", _configfile, _configapp, _logger)
+
         # Find executables
-        self._qsubmit = PBSQueue._find_binary("qsub")
-        self._qinfo = PBSQueue._find_binary("qstat") + " -a"
-        self._qcancel = PBSQueue._find_binary("qdel")
-        self._qstatus = PBSQueue._find_binary("qstat") + " -Q"
+        if _findExecutables:
+            self._qsubmit = PBSQueue._find_binary("qsub")
+            self._qinfo = PBSQueue._find_binary("qstat") + " -a"
+            self._qcancel = PBSQueue._find_binary("qdel")
+            self._qstatus = PBSQueue._find_binary("qstat") + " -Q"
 
         self._sentinel = "jobqueues.done"
         # For synchronous

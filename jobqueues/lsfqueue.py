@@ -11,7 +11,7 @@ from subprocess import check_output, CalledProcessError, DEVNULL
 from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
-from jobqueues.config import _config
+from jobqueues.config import loadConfig
 import yaml
 import logging
 
@@ -195,51 +195,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
         )
 
         # Load LSF configuration profile
-        if _configfile is None:
-            _configfile = _config["lsf"]
-
-        profile = None
-        if _configapp is not None:
-            if _configfile is not None:
-                if os.path.isfile(_configfile) and _configfile.endswith(
-                    (".yml", ".yaml")
-                ):
-                    try:
-                        with open(_configfile, "r") as f:
-                            profile = yaml.load(f, Loader=yaml.FullLoader)
-                        logger.info(
-                            "Loaded LSF configuration YAML file {}".format(_configfile)
-                        )
-                    except:
-                        logger.warning(
-                            "Could not load YAML file {}".format(_configfile)
-                        )
-                else:
-                    logger.warning(
-                        "{} does not exist or it is not a YAML file.".format(
-                            _configfile
-                        )
-                    )
-                if profile:
-                    try:
-                        properties = profile[_configapp]
-                    except:
-                        raise RuntimeError(
-                            "There is no profile in {} for configuration "
-                            "app {}".format(_configfile, _configapp)
-                        )
-                    for p in properties:
-                        setattr(self, p, properties[p])
-                        logger.info("Setting {} to {}".format(p, properties[p]))
-            else:
-                raise RuntimeError(
-                    "No LSF configuration YAML file defined for the configapp"
-                )
-        else:
-            if _configfile is not None:
-                logger.warning(
-                    "LSF configuration YAML file defined without configuration app"
-                )
+        loadConfig(self, "lsf", _configfile, _configapp, _logger)
 
         # Find executables
         if _findExecutables:

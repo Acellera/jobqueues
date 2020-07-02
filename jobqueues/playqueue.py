@@ -14,6 +14,7 @@ import zipfile
 
 from jobqueues.simqueue import SimQueue
 from protocolinterface import ProtocolInterface, val
+from jobqueues.config import loadConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,9 @@ def _symlinkorcopy(ff, targetdir, symlink):
 
 
 class PlayQueue(SimQueue, ProtocolInterface):
-    def __init__(self):
+    def __init__(
+        self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
+    ):
         from playmolecule import Session, Job
 
         SimQueue.__init__(self)
@@ -108,6 +111,8 @@ class PlayQueue(SimQueue, ProtocolInterface):
             val.String(),
             nargs="*",
         )
+
+        loadConfig(self, "playmolecule", _configfile, _configapp, _logger)
 
     def submit(self, folders):
         from jobqueues.util import ensurelist

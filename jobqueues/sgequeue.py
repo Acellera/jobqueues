@@ -11,7 +11,7 @@ from subprocess import check_output, CalledProcessError, DEVNULL
 from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
-from jobqueues.config import _config
+from jobqueues.config import loadConfig
 from math import ceil
 import yaml
 import logging
@@ -146,49 +146,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         )
 
         # Load SGE configuration profile
-        if _configfile is None:
-            _configfile = _config["sge"]
-
-        profile = None
-        if _configapp is not None:
-            if _configfile is not None:
-                if os.path.isfile(_configfile) and _configfile.endswith(
-                    (".yml", ".yaml")
-                ):
-                    try:
-                        with open(_configfile, "r") as f:
-                            profile = yaml.load(f, Loader=yaml.FullLoader)
-                        if _logger:
-                            logger.info(
-                                f"Loaded SGE configuration YAML file {_configfile}"
-                            )
-                    except:
-                        logger.warning(f"Could not load YAML file {_configfile}")
-                else:
-                    logger.warning(
-                        f"{_configfile} does not exist or it is not a YAML file."
-                    )
-                if profile:
-                    try:
-                        properties = profile[_configapp]
-                    except:
-                        raise RuntimeError(
-                            "There is no profile in {} for configuration "
-                            "app {}".format(_configfile, _configapp)
-                        )
-                    for p in properties:
-                        setattr(self, p, properties[p])
-                        if _logger:
-                            logger.info("Setting {} to {}".format(p, properties[p]))
-            else:
-                raise RuntimeError(
-                    "No SGE configuration YAML file defined for the configapp"
-                )
-        else:
-            if _configfile is not None:
-                logger.warning(
-                    "SGE configuration YAML file defined without configuration app"
-                )
+        loadConfig(self, "sge", _configfile, _configapp, _logger)
 
         # Find executables
         if _findExecutables:
