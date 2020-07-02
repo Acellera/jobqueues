@@ -1,6 +1,6 @@
-from jobqueues.celeryfiles.celery import app
 from celery.exceptions import SoftTimeLimitExceeded
 import psutil
+from celery import task
 
 
 def kill(proc_pid):
@@ -10,8 +10,8 @@ def kill(proc_pid):
     process.kill()
 
 
-@app.task
-def run_simulation(folder, deviceid, sentinel, datadir, copyextensions, jobname=None):
+@task
+def execute_job(folder, deviceid, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os
     import time

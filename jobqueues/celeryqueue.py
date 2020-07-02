@@ -1,5 +1,6 @@
 from jobqueues.localqueue import LocalGPUQueue
 from protocolinterface import ProtocolInterface, val
+from jobqueues.config import loadConfig
 import os
 import logging
 
@@ -15,19 +16,9 @@ class CeleryQueue(LocalGPUQueue):
     >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu,celery -c 1
     """
 
-    def __init__(self, _configapp=None, _configfile=None, _logger=True):
-        try:
-            from jobqueues.celeryfiles.celery import app
-        except Exception as e:
-            raise RuntimeError(f"Could not import Celery app with error: {e}")
-
-        try:
-            from jobqueues.celeryfiles.tasks import run_simulation
-
-            self._submitfunc = run_simulation
-        except Exception as e:
-            raise RuntimeError(f"Could not import CeleryQueue task with error {e}")
-
+    def __init__(
+        self, _configapp=None, _configfile=None, _logger=True, _checkWorkers=True
+    ):
         super().__init__()
         self._arg(
             "datadir",
@@ -45,23 +36,51 @@ class CeleryQueue(LocalGPUQueue):
             nargs="*",
         )
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
+        self._arg(
+            "broker", "str", "Broker", "pyamqp://guest@localhost:5462//", val.String()
+        )
+        self._arg("backend", "str", "Result backend", "rpc://", val.String())
+
+        loadConfig(self, "celery", _configfile, _configapp, _logger)
+
+        try:
+            from celery import Celery
+
+            app = Celery(
+                "tasks",
+                broker=self.broker,
+                backend=self.backend,
+                include=("jobqueues.celeryfiles.tasks",),
+            )
+            app.conf.task_routes = {"jobqueues.celeryfiles.tasks.execute_job": "gpu"}
+        except Exception as e:
+            raise RuntimeError(f"Could not import Celery app with error: {e}")
+
         self._app = app
         try:
-            # This will currently hang instead of crashing if rabbit is down https://github.com/celery/celery/issues/5139
-            # Really annoying issue. Will need to wait for a fix in celery
-            self._workers = list(app.control.inspect().ping().keys())
+            from jobqueues.celeryfiles.tasks import execute_job
+
+            self._submitfunc = execute_job
         except Exception as e:
-            raise RuntimeError(f"Could not list Celery workers with error: {e}")
+            raise RuntimeError(f"Could not import CeleryQueue task with error {e}")
 
-        if len(self._workers) == 0:
-            raise RuntimeError("Could not find any running Celery workers.")
+        if _checkWorkers:
+            try:
+                # This will currently hang instead of crashing if rabbit is down https://github.com/celery/celery/issues/5139
+                # Really annoying issue. Will need to wait for a fix in celery
+                self._workers = list(app.control.inspect().ping().keys())
+            except Exception as e:
+                raise RuntimeError(f"Could not list Celery workers with error: {e}")
 
-        if _logger:
-            logger.info(
-                f"CeleryQueue found the following active workers: {self._workers}"
-            )
+            if len(self._workers) == 0:
+                raise RuntimeError("Could not find any running Celery workers.")
 
-        self._insp = self._app.control.inspect(self._workers)
+            if _logger:
+                logger.info(
+                    f"CeleryQueue found the following active workers: {self._workers}"
+                )
+
+            self._insp = self._app.control.inspect(self._workers)
 
     def submit(self, dirs):
         dirs = self._submitinit(dirs)

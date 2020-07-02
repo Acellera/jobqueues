@@ -1,9 +1,9 @@
 from __future__ import absolute_import, unicode_literals
-from celery import Celery
+from jobqueues.celeryqueue import CeleryQueue
 
 
-app = Celery("tasks")
-app.config_from_object("jobqueues.celeryfiles.celeryconfig")
+q = CeleryQueue(_checkWorkers=False)
+app = q._app
 
 if __name__ == "__main__":
     app.start()
