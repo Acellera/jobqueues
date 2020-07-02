@@ -42,12 +42,18 @@ def _getGPUdevices():
     return devices
 
 
-def _filterVisibleGPUdevices(devices, _logger):
+def _getVisibleGPUdevices():
     import os
 
-    visible_devices_str = os.getenv("CUDA_VISIBLE_DEVICES")
-    if visible_devices_str is not None:
-        visible_devices = visible_devices_str.split(",")
+    visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+    if visible_devices is not None:
+        visible_devices = [int(v) for v in visible_devices.split(",")]
+    return visible_devices
+
+
+def _filterVisibleGPUdevices(devices, _logger):
+    visible_devices = _getVisibleGPUdevices()
+    if visible_devices is not None:
         if _logger:
             logger.info("GPU devices requested: {}".format(",".join(map(str, devices))))
             logger.info(

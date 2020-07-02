@@ -2,6 +2,10 @@ from celery.exceptions import SoftTimeLimitExceeded
 import psutil
 from celery import task
 from billiard import current_process
+from jobqueues.util import _getVisibleGPUdevices
+
+
+visibledevs = _getVisibleGPUdevices()
 
 
 def kill(proc_pid):
@@ -18,7 +22,10 @@ def execute_gpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
     import time
 
     worker_index = current_process().index
-    print(f"Running job on worker index {worker_index}")
+    gpu_index = worker_index
+    if visibledevs is not None:
+        gpu_index = visibledevs[worker_index % len(visibledevs)]
+    print(f"Running job on worker index {worker_index} and GPU device {gpu_index}")
 
     runsh = os.path.join(folder, "run.sh")
     jobsh = os.path.join(folder, "job.sh")
