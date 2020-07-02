@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 from jobqueues.simqueue import SimQueue
+from jobqueues.util import _getCPUdevices, _getGPUdevices, _filterVisibleGPUdevices
 from protocolinterface import ProtocolInterface, val
 import queue
 import os
@@ -310,25 +311,15 @@ class LocalGPUQueue(_LocalQueue):
 
     def _getdevices(self, _logger=True):
         ngpu = self.ngpu
-        devices = self.devices
-        if ngpu is not None and devices is not None:
+        if ngpu is not None and self.devices is not None:
             raise ValueError("Parameters `ngpu` and `devices` are mutually exclusive.")
 
-        if ngpu is None and devices is None:
-            logger.info("Trying to determine all GPU devices")
-            try:
-                check_output("nvidia-smi -L", shell=True)
-                devices = range(
-                    int(
-                        check_output("nvidia-smi -L | wc -l", shell=True).decode(
-                            "ascii"
-                        )
-                    )
-                )
-            except:
-                raise
         elif ngpu is not None:
             devices = range(ngpu)
+        elif self.devices is not None:
+            devices = self.devices
+        else:
+            devices = _getGPUdevices()
 
         if devices is None:
             raise RuntimeError(
@@ -336,21 +327,7 @@ class LocalGPUQueue(_LocalQueue):
                 "parameters"
             )
         else:
-            visible_devices_str = os.getenv("CUDA_VISIBLE_DEVICES")
-            if visible_devices_str is not None:
-                visible_devices = visible_devices_str.split(",")
-                if _logger:
-                    logger.info(
-                        "GPU devices requested: {}".format(",".join(map(str, devices)))
-                    )
-                    logger.info(
-                        "GPU devices visible: {}".format(
-                            ",".join(map(str, visible_devices))
-                        )
-                    )
-                devices = [
-                    dd for dd in devices if dd in visible_devices
-                ]  # Only keep the selected visible devices. interest1d of the two lists
+            devices = _filterVisibleGPUdevices(devices, _logger)
             if _logger:
                 logger.info("Using GPU devices {}".format(",".join(map(str, devices))))
         return devices

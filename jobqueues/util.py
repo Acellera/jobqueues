@@ -1,3 +1,9 @@
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
 def ensurelist(tocheck, tomod=None):
     """Convert numpy ndarray and scalars to lists.
 
@@ -15,3 +21,38 @@ def ensurelist(tocheck, tomod=None):
             tomod,
         ]
     return tomod
+
+
+def _getCPUdevices():
+    import psutil
+
+    return psutil.cpu_count()
+
+
+def _getGPUdevices():
+    from subprocess import check_output
+
+    logger.info("Trying to determine all GPU devices")
+    try:
+        check_output("nvidia-smi -L", shell=True)
+        ngpu = check_output("nvidia-smi -L | wc -l", shell=True).decode("ascii")
+        devices = range(int(ngpu))
+    except:
+        raise
+    return devices
+
+
+def _filterVisibleGPUdevices(devices, _logger):
+    import os
+
+    visible_devices_str = os.getenv("CUDA_VISIBLE_DEVICES")
+    if visible_devices_str is not None:
+        visible_devices = visible_devices_str.split(",")
+        if _logger:
+            logger.info("GPU devices requested: {}".format(",".join(map(str, devices))))
+            logger.info(
+                "GPU devices visible: {}".format(",".join(map(str, visible_devices)))
+            )
+        # Only keep the selected visible devices. intersect of the two lists
+        devices = [dd for dd in devices if dd in visible_devices]
+    return devices
