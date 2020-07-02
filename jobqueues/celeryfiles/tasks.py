@@ -1,6 +1,7 @@
 from celery.exceptions import SoftTimeLimitExceeded
 import psutil
 from celery import task
+from billiard import current_process
 
 
 def kill(proc_pid):
@@ -11,7 +12,42 @@ def kill(proc_pid):
 
 
 @task
-def execute_job(folder, deviceid, sentinel, datadir, copyextensions, jobname=None):
+def execute_gpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
+    import subprocess
+    import os
+    import time
+
+    worker_index = current_process().index
+    print(f"Running job on worker index {worker_index}")
+
+    runsh = os.path.join(folder, "run.sh")
+    jobsh = os.path.join(folder, "job.sh")
+    stdfile = os.path.join(folder, "celery.out")
+    _createJobScript(
+        jobsh, folder, runsh, worker_index, sentinel, datadir, copyextensions
+    )
+
+    # Sleep for a short bit so that the OS can pick up on the new file before executing it
+    time.sleep(0.2)
+
+    process = None
+    try:
+        with open(stdfile, "a") as fout:
+            process = subprocess.Popen(
+                ["/bin/sh", jobsh], stdout=fout, stderr=fout, shell=False
+            )
+            _ = process.communicate()
+    except SoftTimeLimitExceeded:
+        # The SoftTimeLimitExceeded exception is a hack because SIGTERM doesn't work in Celery. See celeryqueue.py comment.
+        if process is not None:
+            kill(process.pid)
+        print(f"Job {jobname} has been cancelled by the user")
+    except Exception as e:
+        raise e
+
+
+@task
+def execute_cpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os
     import time
@@ -19,7 +55,7 @@ def execute_job(folder, deviceid, sentinel, datadir, copyextensions, jobname=Non
     runsh = os.path.join(folder, "run.sh")
     jobsh = os.path.join(folder, "job.sh")
     stdfile = os.path.join(folder, "celery.out")
-    _createJobScript(jobsh, folder, runsh, deviceid, sentinel, datadir, copyextensions)
+    _createJobScript(jobsh, folder, runsh, None, sentinel, datadir, copyextensions)
 
     # Sleep for a short bit so that the OS can pick up on the new file before executing it
     time.sleep(0.2)

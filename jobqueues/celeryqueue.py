@@ -13,7 +13,8 @@ class CeleryQueue(LocalGPUQueue):
 
     Start a celery server with:
     >>> docker run -d -p 5462:5672 rabbitmq
-    >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu,celery -c 1
+    >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q gpu -c 4  -n gpu@%h
+    >>> celery --app=jobqueues.celeryfiles.celery worker --loglevel=info -Q cpu -c 10 -n cpu@%h
     """
 
     def __init__(
@@ -40,6 +41,9 @@ class CeleryQueue(LocalGPUQueue):
             "broker", "str", "Broker", "pyamqp://guest@localhost:5462//", val.String()
         )
         self._arg("backend", "str", "Result backend", "rpc://", val.String())
+        self._arg(
+            "usesgpu", "bool", "Set to True if jobs use GPU", False, val.Boolean()
+        )
 
         loadConfig(self, "celery", _configfile, _configapp, _logger)
 
@@ -52,15 +56,18 @@ class CeleryQueue(LocalGPUQueue):
                 backend=self.backend,
                 include=("jobqueues.celeryfiles.tasks",),
             )
-            app.conf.task_routes = {"jobqueues.celeryfiles.tasks.execute_job": "gpu"}
+            app.conf.task_routes = {
+                "jobqueues.celeryfiles.tasks.execute_gpu_job": "gpu",
+                "jobqueues.celeryfiles.tasks.execute_cpu_job": "cpu",
+            }
         except Exception as e:
             raise RuntimeError(f"Could not import Celery app with error: {e}")
 
         self._app = app
         try:
-            from jobqueues.celeryfiles.tasks import execute_job
+            from jobqueues.celeryfiles.tasks import execute_gpu_job, execute_cpu_job
 
-            self._submitfunc = execute_job
+            self._submitfunc = {"gpu": execute_gpu_job, "cpu": execute_cpu_job}
         except Exception as e:
             raise RuntimeError(f"Could not import CeleryQueue task with error {e}")
 
@@ -97,13 +104,12 @@ class CeleryQueue(LocalGPUQueue):
             runscript = self._getRunScript(dirname)
             self._cleanSentinel(dirname)
 
-            async_res = self._submitfunc.delay(
-                dirname,
-                0,
-                self._sentinel,
-                self.datadir,
-                self.copy,
-                jobname=self.jobname,
+            if self.usesgpu:
+                func = self._submitfunc["gpu"]
+            else:
+                func = self._submitfunc["cpu"]
+            async_res = func.delay(
+                dirname, self._sentinel, self.datadir, self.copy, jobname=self.jobname,
             )
 
     def retrieve(self):
