@@ -64,6 +64,8 @@ def loadConfig(cls, queuename, _configfile=None, _configapp=None, _logger=True):
         )
 
     def setproperties(properties):
+        if properties is None:
+            return
         for p in properties:
             setattr(cls, p, properties[p])
             if _logger:
