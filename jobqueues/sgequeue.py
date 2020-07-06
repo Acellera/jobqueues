@@ -185,7 +185,8 @@ class SgeQueue(SimQueue, ProtocolInterface):
             f.write("#$ -N PM{}\n".format(self.jobname))
             f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
             f.write("#$ -pe thread {}\n".format(self.ncpu))
-            f.write("#$ -l ngpus={}\n".format(self.ngpu))
+            if self.ngpu > 0:
+                f.write("#$ -l ngpus={}\n".format(self.ngpu))
             if self.memory is not None:
                 f.write("#$ -l h_vmem={}G\n".format(int(ceil(self.memory / 1000))))
             f.write("#$ -wd {}\n".format(workdir))
