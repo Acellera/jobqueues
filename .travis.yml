@@ -45,7 +45,7 @@ script:
   - conda activate test
 
   # Install the conda package
-  - conda install -y ~/.conda/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2 -c acellera
+  - pip install .
 
   # Run tests
   - coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
