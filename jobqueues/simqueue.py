@@ -5,6 +5,7 @@
 #
 from abc import ABC, abstractmethod
 import logging
+import enum
 
 logger = logging.getLogger(__name__)
 
