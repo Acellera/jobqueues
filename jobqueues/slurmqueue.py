@@ -420,6 +420,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
     def jobInfo(self):
         import getpass
+        from jobqueues.simqueue import QueueJobStatus
 
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
@@ -447,10 +448,20 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         if "Slurm accounting storage is disabled" in ret:
             raise RuntimeError("Slurm accounting is disabled. Cannot get job info.")
         lines = ret.splitlines()
-        if len(lines) == 1:
+        if len(lines) < 2:
             return None
-        vals = lines[1].split("|")
-        return {"state": vals[0], "exitcode": vals[1], "reason": vals[2]}
+        state, exitcode, reason = lines[1].split("|")
+        mapstate = {
+            "COMPLETED": QueueJobStatus.COMPLETED,
+            "RUNNING": QueueJobStatus.RUNNING,
+            "FAILED": QueueJobStatus.FAILED,
+            "TIMEOUT": QueueJobStatus.TIMEOUT,
+        }
+        if state in mapstate:
+            state = mapstate[state]
+        else:
+            raise RuntimeError(f'Unknown SLURM job state "{state}"')
+        return {"state": state, "exitcode": exitcode, "reason": reason}
 
     @property
     def ncpu(self):

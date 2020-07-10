@@ -9,6 +9,28 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@enum.unique
+class QueueJobStatus(enum.IntEnum):
+    """ Job status codes """
+
+    RUNNING = 0
+    COMPLETED = 1
+    FAILED = 2
+    TIMEOUT = 3
+
+    def describe(self):
+        codes = {
+            0: "Running",
+            1: "Completed",
+            2: "Failed",
+            3: "Timeout",
+        }
+        return codes[self.value]
+
+    def __str__(self):
+        return self.describe()
+
+
 class RetrieveError(Exception):
     def __init__(self, value):
         self.value = value
