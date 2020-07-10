@@ -34,7 +34,7 @@ script:
 
   # Build a conda package
   - python ci/travis/insert_placeholder_values.py
-  - conda build --python $TRAVIS_PYTHON_VERSION --no-include-recipe package/jobqueues
+  - conda build --python $TRAVIS_PYTHON_VERSION --no-include-recipe package/jobqueues -c acellera
 
   # Create a test environment
   - conda create -n test -y
@@ -45,7 +45,7 @@ script:
   - conda activate test
 
   # Install the conda package
-  - conda install -y ~/.conda/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2
+  - conda install -y ~/.conda/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2 -c acellera
 
   # Run tests
   - coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
