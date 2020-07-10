@@ -435,7 +435,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             "-u",
             user,
             "-o",
-            "State,ExitCode,Reason",
+            "State,ExitCode,Reason,Timelimit",
             "-P",
         ]
         if self.partition is not None:
@@ -451,7 +451,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         lines = ret.splitlines()
         if len(lines) < 2:
             return None
-        state, exitcode, reason = lines[1].split("|")
+        state, exitcode, reason, timelimit = lines[1].split("|")
         mapstate = {
             "COMPLETED": QueueJobStatus.COMPLETED,
             "RUNNING": QueueJobStatus.RUNNING,
@@ -462,7 +462,12 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             state = mapstate[state]
         else:
             raise RuntimeError(f'Unknown SLURM job state "{state}"')
-        return {"state": state, "exitcode": exitcode, "reason": reason}
+        return {
+            "state": state,
+            "exitcode": exitcode,
+            "reason": reason,
+            "timelimit": timelimit,
+        }
 
     @property
     def ncpu(self):
