@@ -418,6 +418,40 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             ret = check_output(cmd)
             logger.debug(ret.decode("ascii"))
 
+    def jobInfo(self):
+        import getpass
+
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
+        user = getpass.getuser()
+
+        cmd = [
+            self._qacct,
+            "--name",
+            self.jobname,
+            "-u",
+            user,
+            "-o",
+            '"State,ExitCode,Reason"',
+            "-P",
+        ]
+        if self.partition is not None:
+            cmd += ["--partition", ",".join(ensurelist(self.partition))]
+
+        logger.debug(cmd)
+        ret = check_output(cmd).decode("ascii")
+        logger.debug(ret)
+
+        # TODO: Is there a specific exit code for this?
+        if "Slurm accounting storage is disabled" in ret:
+            raise RuntimeError("Slurm accounting is disabled. Cannot get job info.")
+        lines = ret.splitlines()
+        if len(lines) == 1:
+            return None
+        vals = lines[1].split("|")
+        return {"state": vals[0], "exitcode": vals[1], "reason": vals[2]}
+
     @property
     def ncpu(self):
         return self.__dict__["ncpu"]
