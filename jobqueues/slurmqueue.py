@@ -213,6 +213,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             self._qinfo = SlurmQueue._find_binary("sinfo")
             self._qcancel = SlurmQueue._find_binary("scancel")
             self._qstatus = SlurmQueue._find_binary("squeue")
+            self._qacct = SlurmQueue._find_binary("sacct")
             self._checkQueue()
 
     def _checkQueue(self):
@@ -434,7 +435,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             "-u",
             user,
             "-o",
-            '"State,ExitCode,Reason"',
+            "State,ExitCode,Reason",
             "-P",
         ]
         if self.partition is not None:
