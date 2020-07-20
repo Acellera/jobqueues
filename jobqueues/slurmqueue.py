@@ -427,7 +427,9 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         # Check also with sacct because squeue sometimes fails to report the right number
         try:
             info = [
-                key for key, val in self.jobInfo() if val["state"] in _inProgressStatus
+                key
+                for key, val in self.jobInfo().items()
+                if val["state"] in _inProgressStatus
             ]
             if len(info) != inprog:
                 logger.warning(
