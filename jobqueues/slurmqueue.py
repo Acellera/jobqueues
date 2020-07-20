@@ -11,11 +11,31 @@ from jobqueues.config import loadConfig
 import yaml
 from subprocess import check_output, CalledProcessError
 from protocolinterface import ProtocolInterface, val
-from jobqueues.simqueue import SimQueue
+from jobqueues.simqueue import SimQueue, QueueJobStatus, _inProgressStatus
 from jobqueues.util import ensurelist
+import getpass
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+JOB_STATE_CODES = {
+    "BOOT_FAIL": QueueJobStatus.FAILED,
+    "CANCELLED": QueueJobStatus.CANCELLED,
+    "COMPLETED": QueueJobStatus.COMPLETED,
+    "DEADLINE": QueueJobStatus.FAILED,
+    "FAILED": QueueJobStatus.FAILED,
+    "NODE_FAIL": QueueJobStatus.FAILED,
+    "OUT_OF_MEMORY": QueueJobStatus.OUT_OF_MEMORY,
+    "PENDING": QueueJobStatus.PENDING,
+    "PREEMPTED": QueueJobStatus.PENDING,
+    "RUNNING": QueueJobStatus.RUNNING,
+    "REQUEUED": QueueJobStatus.PENDING,
+    "RESIZING": QueueJobStatus.PENDING,
+    "REVOKED": QueueJobStatus.FAILED,
+    "SUSPENDED": QueueJobStatus.PENDING,
+    "TIMEOUT": QueueJobStatus.TIMEOUT,
+}
 
 
 class SlurmQueue(SimQueue, ProtocolInterface):
@@ -203,6 +223,13 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             None,
             val.String(),
         )
+        self._arg(
+            "user",
+            "str",
+            "The SLURM user submitting and managing jobs",
+            getpass.getuser(),
+            val.String(),
+        )
 
         # Load Slurm configuration profile
         loadConfig(self, "slurm", _configfile, _configapp, _logger)
@@ -213,7 +240,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             self._qinfo = SlurmQueue._find_binary("sinfo")
             self._qcancel = SlurmQueue._find_binary("scancel")
             self._qstatus = SlurmQueue._find_binary("squeue")
-            self._qacct = SlurmQueue._find_binary("sacct")
+            self._qjobinfo = SlurmQueue._find_binary("sacct")
             self._checkQueue()
 
     def _checkQueue(self):
@@ -349,6 +376,23 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             except:
                 raise
 
+    def _robust_check_output(self, cmd, maxtries=3):
+        # Attempts multiple times to execute the command before failing. This is to handle connection issues to SLURM
+        import time
+
+        tries = 0
+        while tries < maxtries:
+            try:
+                ret = check_output(cmd)
+            except CalledProcessError:
+                if tries == (maxtries - 1):
+                    raise
+                tries += 1
+                time.sleep(3)
+                continue
+            break
+        return ret
+
     def inprogress(self):
         """ Returns the sum of the number of running and queued workunits of the specific group in the engine.
 
@@ -358,116 +402,110 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             Total running and queued workunits
         """
         import time
-        import getpass
 
-        if self.partition is None:
-            raise ValueError("The partition needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
-        user = getpass.getuser()
+
         cmd = [
             self._qstatus,
             "-n",
             self.jobname,
             "-u",
-            user,
-            "-p",
-            ",".join(ensurelist(self.partition)),
-        ]
-        logger.debug(cmd)
-
-        # This command randomly fails so I need to allow it to repeat or it crashes adaptive
-        tries = 0
-        while tries < 3:
-            try:
-                ret = check_output(cmd)
-            except CalledProcessError:
-                if tries == 2:
-                    raise
-                tries += 1
-                time.sleep(3)
-                continue
-            break
-
-        logger.debug(ret.decode("ascii"))
-
-        # TODO: check lines and handle errors
-        l = ret.decode("ascii").split("\n")
-        l = len(l) - 2
-        if l < 0:
-            l = 0  # something odd happened
-        return l
-
-    def stop(self):
-        """ Cancels all currently running and queued jobs
-        """
-        import getpass
-
-        if self.jobname is None:
-            raise ValueError("The jobname needs to be defined.")
-
-        user = getpass.getuser()
-        if self.partition is not None:
-            for q in ensurelist(self.partition):
-                cmd = [self._qcancel, "-n", self.jobname, "-u", user, "-p", q]
-                logger.debug(cmd)
-                ret = check_output(cmd)
-                logger.debug(ret.decode("ascii"))
-        else:
-            cmd = [self._qcancel, "-n", self.jobname, "-u", user]
-            logger.debug(cmd)
-            ret = check_output(cmd)
-            logger.debug(ret.decode("ascii"))
-
-    def jobInfo(self):
-        import getpass
-        from jobqueues.simqueue import QueueJobStatus
-
-        if self.jobname is None:
-            raise ValueError("The jobname needs to be defined.")
-
-        user = getpass.getuser()
-
-        cmd = [
-            self._qacct,
-            "--name",
-            self.jobname,
-            "-u",
-            user,
-            "-o",
-            "State,ExitCode,Reason,Timelimit",
-            "-P",
+            self.user,
         ]
         if self.partition is not None:
             cmd += ["--partition", ",".join(ensurelist(self.partition))]
 
         logger.debug(cmd)
-        ret = check_output(cmd).decode("ascii")
+        ret = self._robust_check_output(cmd).decode("ascii")
+        logger.debug(ret)
+
+        # Count the number of lines returned by squeue as number of "in progress" jobs
+        lines = ret.splitlines()
+        inprog = max(0, len(lines) - 1)
+
+        # Check also with sacct because squeue sometimes fails to report the right number
+        try:
+            info = [
+                key for key, val in self.jobInfo() if val["state"] in _inProgressStatus
+            ]
+            if len(info) != inprog:
+                logger.warning(
+                    f"squeue and sacct gave different number of running jobs ({inprog}/{len(info)}) with name {self.jobname}. Using the max of the two."
+                )
+            inprog = max(inprog, len(info))
+        except Exception as e:
+            logger.warning(f"Failed to get jobInfo with error: {e}")
+
+        return inprog
+
+    def stop(self):
+        """ Cancels all currently running and queued jobs
+        """
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
+        if self.partition is not None:
+            for q in ensurelist(self.partition):
+                cmd = [self._qcancel, "-n", self.jobname, "-u", self.user, "-p", q]
+                logger.debug(cmd)
+                ret = check_output(cmd)
+                logger.debug(ret.decode("ascii"))
+        else:
+            cmd = [self._qcancel, "-n", self.jobname, "-u", self.user]
+            logger.debug(cmd)
+            ret = check_output(cmd)
+            logger.debug(ret.decode("ascii"))
+
+    def jobInfo(self):
+        from jobqueues.simqueue import QueueJobStatus
+
+        if self.jobname is None:
+            raise ValueError("The jobname needs to be defined.")
+
+        cmd = [
+            self._qjobinfo,
+            "--name",
+            self.jobname,
+            "-u",
+            self.user,
+            "-o",
+            "JobID,JobName,State,ExitCode,Reason,Timelimit",
+            "-P",
+            "-X",
+        ]
+        if self.partition is not None:
+            cmd += ["--partition", ",".join(ensurelist(self.partition))]
+
+        logger.debug(cmd)
+        ret = self._robust_check_output(cmd).decode("ascii")
         logger.debug(ret)
 
         # TODO: Is there a specific exit code for this?
         if "Slurm accounting storage is disabled" in ret:
             raise RuntimeError("Slurm accounting is disabled. Cannot get job info.")
+
         lines = ret.splitlines()
         if len(lines) < 2:
             return None
-        state, exitcode, reason, timelimit = lines[1].split("|")
-        mapstate = {
-            "COMPLETED": QueueJobStatus.COMPLETED,
-            "RUNNING": QueueJobStatus.RUNNING,
-            "FAILED": QueueJobStatus.FAILED,
-            "TIMEOUT": QueueJobStatus.TIMEOUT,
-        }
-        if state in mapstate:
-            state = mapstate[state]
-        else:
-            raise RuntimeError(f'Unknown SLURM job state "{state}"')
-        return {
-            "state": state,
-            "exitcode": exitcode,
-            "reason": reason,
-            "timelimit": timelimit,
-        }
+
+        info = {}
+        for line in lines[1:]:
+            jobid, _, state, exitcode, reason, timelimit = line.split("|")
+
+            if state in JOB_STATE_CODES:
+                state = JOB_STATE_CODES[state]
+            else:
+                raise RuntimeError(f'Unknown SLURM job state "{state}"')
+
+            info[jobid] = {
+                "state": state,
+                "exitcode": exitcode,
+                "reason": reason,
+                "timelimit": timelimit,
+            }
+
+        return info
 
     @property
     def ncpu(self):

@@ -18,6 +18,9 @@ class QueueJobStatus(enum.IntEnum):
     COMPLETED = 1
     FAILED = 2
     TIMEOUT = 3
+    CANCELLED = 4
+    PENDING = 5
+    OUT_OF_MEMORY = 6
 
     def describe(self):
         codes = {
@@ -25,11 +28,17 @@ class QueueJobStatus(enum.IntEnum):
             1: "Completed",
             2: "Failed",
             3: "Timeout",
+            4: "Cancelled",
+            5: "Pending",
+            6: "Out of memory error",
         }
         return codes[self.value]
 
     def __str__(self):
         return self.describe()
+
+
+_inProgressStatus = (QueueJobStatus.RUNNING, QueueJobStatus.PENDING)
 
 
 class RetrieveError(Exception):
