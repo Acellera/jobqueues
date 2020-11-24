@@ -361,58 +361,58 @@ class SgeQueue(SimQueue, ProtocolInterface):
 
 import unittest
 
-
-class _TestSGEQueue(unittest.TestCase):
-    def test_sge(self):
-        import tempfile
-        from jobqueues.sgequeue import SgeQueue
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, "run.sh"), "w") as f:
-                f.write("test")
-            os.chmod(os.path.join(tmpdir, "run.sh"), 0o700)
-
-            q = SgeQueue(_findExecutables=False)
-            q.queue = "myqueue"
-            q.memory = 5000
-            q.walltime = 30
-            q.prerun = ["touch /tmp/this.file", 'echo "test" > /dev/null']
-            q.datadir = "/tmp/data"
-            q.trajext = "xtc"
-            q.jobname = "SGE_TEST"
-            try:
-                q.submit(tmpdir)
-            except Exception as e:
-                print("ERROR:", e)
-                pass  # Ignore submission error
-
-            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
-                file_text = f.read()
-
-            ref_text = f"""#!/bin/bash
-#
-#$ -N PMSGE_TEST
-#$ -q "myqueue"
-#$ -wd {tmpdir}
-#$ -pe thread 1
-#$ -l ngpus=1
-#$ -l h_vmem=5G
-#$ -v ACEMD_HOME,HTMD_LICENSE_FILE
-#$ -l h_rt=30
-
-trap "touch {tmpdir}/jobqueues.done" EXIT SIGTERM
-
-touch /tmp/this.file
-echo "test" > /dev/null
-
-cd {tmpdir}
-{tmpdir}/run.sh
-
-mv *.xtc /tmp/data/{os.path.basename(tmpdir)}
-"""
-            assert file_text.strip() == ref_text.strip()
-
-
 # # Had to disable testing because pytest 6.0.0rc1 is incompatible with jinja 2.11.2. If they ever fix this issue enable again
+
+# class _TestSGEQueue(unittest.TestCase):
+#     def test_sge(self):
+#         import tempfile
+#         from jobqueues.sgequeue import SgeQueue
+
+#         with tempfile.TemporaryDirectory() as tmpdir:
+#             with open(os.path.join(tmpdir, "run.sh"), "w") as f:
+#                 f.write("test")
+#             os.chmod(os.path.join(tmpdir, "run.sh"), 0o700)
+
+#             q = SgeQueue(_findExecutables=False)
+#             q.queue = "myqueue"
+#             q.memory = 5000
+#             q.walltime = 30
+#             q.prerun = ["touch /tmp/this.file", 'echo "test" > /dev/null']
+#             q.datadir = "/tmp/data"
+#             q.trajext = "xtc"
+#             q.jobname = "SGE_TEST"
+#             try:
+#                 q.submit(tmpdir)
+#             except Exception as e:
+#                 print("ERROR:", e)
+#                 pass  # Ignore submission error
+
+#             with open(os.path.join(tmpdir, "job.sh"), "r") as f:
+#                 file_text = f.read()
+
+#             ref_text = f"""#!/bin/bash
+# #
+# #$ -N PMSGE_TEST
+# #$ -q "myqueue"
+# #$ -wd {tmpdir}
+# #$ -pe thread 1
+# #$ -l ngpus=1
+# #$ -l h_vmem=5G
+# #$ -v ACEMD_HOME,HTMD_LICENSE_FILE
+# #$ -l h_rt=30
+
+# trap "touch {tmpdir}/jobqueues.done" EXIT SIGTERM
+
+# touch /tmp/this.file
+# echo "test" > /dev/null
+
+# cd {tmpdir}
+# {tmpdir}/run.sh
+
+# mv *.xtc /tmp/data/{os.path.basename(tmpdir)}
+# """
+#             assert file_text.strip() == ref_text.strip()
+
+
 # if __name__ == "__main__":
 #     unittest.main(verbosity=2)
