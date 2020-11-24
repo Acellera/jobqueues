@@ -413,5 +413,6 @@ mv *.xtc /tmp/data/{os.path.basename(tmpdir)}
             assert file_text.strip() == ref_text.strip()
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+# # Had to disable testing because pytest 6.0.0rc1 is incompatible with jinja 2.11.2. If they ever fix this issue enable again
+# if __name__ == "__main__":
+#     unittest.main(verbosity=2)
