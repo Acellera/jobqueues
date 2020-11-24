@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+#$ -N PM{{ jobname }}
+#$ -q "{{ queue }}"
+#$ -wd {{ workdir }}
+{% if pe is not none %}
+#$ -pe {{ pe }} {{ cores }}
+{% endif %}
+{% if ngpu > 0 %}
+#$ -l ngpus={{ ngpu }}
+{% endif %}
+{% if memory is not none %}
+#$ -l h_vmem={{ memory }}G
+{% endif %}
+{% if envvars is not none %}
+#$ -v {{ envvars }}
+{% endif %}
+{% if walltime is not none %}
+#$ -l h_rt={{ walltime }}
+{% endif %}
+
+trap "touch {{ sentinel }}" EXIT SIGTERM
+
+{% for cmd in prerun %}
+{{ cmd }}
+{% endfor %}
+
+cd {{ workdir }}
+{{ runsh }}
+
+{% if datadir is not none %}
+mv *.{{ trajext }} {{ odir }}
+{% endif %}

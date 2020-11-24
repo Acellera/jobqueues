@@ -1,3 +1,4 @@
 protocolinterface
 psutil
 pyyaml
+jinja2

@@ -43,9 +43,10 @@ class SgeQueue(SimQueue, ProtocolInterface):
         "ncpu": 1,
         "memory": None,
         "walltime": None,
+        "pe": "thread",
         "resources": None,
         "envvars": "ACEMD_HOME,HTMD_LICENSE_FILE",
-        "prerun": None,
+        "prerun": [],
     }
 
     def __init__(
@@ -90,6 +91,9 @@ class SgeQueue(SimQueue, ProtocolInterface):
             "Job timeout (hour:min or min)",
             self._defaults["walltime"],
             val.Number(int, "0POS"),
+        )
+        self._arg(
+            "pe", "str", "SGE Parallel Environment", self._defaults["pe"], val.String(),
         )
         self._arg(
             "resources",
@@ -178,47 +182,44 @@ class SgeQueue(SimQueue, ProtocolInterface):
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
-        workdir = os.path.abspath(workdir)
-        with open(fname, "w") as f:
-            f.write("#!/bin/bash\n")
-            f.write("#\n")
-            f.write("#$ -N PM{}\n".format(self.jobname))
-            f.write('#$ -q "{}"\n'.format(",".join(ensurelist(self.queue))))
-            f.write("#$ -pe thread {}\n".format(self.ncpu))
-            if self.ngpu > 0:
-                f.write("#$ -l ngpus={}\n".format(self.ngpu))
-            if self.memory is not None:
-                f.write("#$ -l h_vmem={}G\n".format(int(ceil(self.memory / 1000))))
-            f.write("#$ -wd {}\n".format(workdir))
-            # f.write("#$ -o {}\n".format(self.outputstream))
-            # f.write("#$ -e {}\n".format(self.errorstream))
-            if self.envvars is not None:
-                f.write("#$ -v {}\n".format(self.envvars))
-            if self.walltime is not None:
-                f.write("#$ -l h_rt={}\n".format(self.walltime))
-            # Trap kill signals to create sentinel file
-            f.write(
-                '\ntrap "touch {}" EXIT SIGTERM\n'.format(
-                    os.path.normpath(os.path.join(workdir, self._sentinel))
-                )
-            )
-            f.write("\n")
-            if self.prerun is not None:
-                for call in ensurelist(self.prerun):
-                    f.write("{}\n".format(call))
-            f.write("\ncd {}\n".format(workdir))
-            f.write("{}".format(runsh))
+        from jobqueues.config import template_env
 
-            # Move completed trajectories
-            if self.datadir is not None:
-                datadir = os.path.abspath(self.datadir)
-                if not os.path.isdir(datadir):
-                    os.mkdir(datadir)
-                simname = os.path.basename(os.path.normpath(workdir))
-                # create directory for new file
-                odir = os.path.join(datadir, simname)
-                os.mkdir(odir)
-                f.write("\nmv *.{} {}".format(self.trajext, odir))
+        workdir = os.path.abspath(workdir)
+        sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
+        # Move completed trajectories
+        odir = None
+        if self.datadir is not None:
+            datadir = os.path.abspath(self.datadir)
+            if not os.path.isdir(datadir):
+                os.makedirs(datadir, exist_ok=True)
+            simname = os.path.basename(os.path.normpath(workdir))
+            # create directory for new file
+            odir = os.path.join(datadir, simname)
+            os.makedirs(odir, exist_ok=True)
+
+        memory = int(ceil(self.memory / 1000)) if self.memory is not None else None
+
+        template = template_env.get_template("SGE_job.sh.j2")
+        job_str = template.render(
+            jobname=self.jobname,
+            queue=",".join(ensurelist(self.queue)),
+            pe=self.pe,
+            cores=self.ncpu,
+            ngpu=self.ngpu,
+            memory=memory,
+            workdir=workdir,
+            envvars=self.envvars,
+            walltime=self.walltime,
+            sentinel=sentinel,
+            prerun=self.prerun,
+            runsh=runsh,
+            datadir=self.datadir,
+            odir=odir,
+            trajext=self.trajext,
+        )
+
+        with open(fname, "w") as f:
+            f.write(job_str)
 
         os.chmod(fname, 0o700)
 
@@ -228,8 +229,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
 
     def _autoJobName(self, path):
         return (
-            "PM"
-            + os.path.basename(os.path.abspath(path))
+            os.path.basename(os.path.abspath(path))
             + "_"
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
@@ -359,8 +359,58 @@ class SgeQueue(SimQueue, ProtocolInterface):
         self.memory = value
 
 
+import unittest
+
+
+class _TestSGEQueue(unittest.TestCase):
+    def test_sge(self):
+        import tempfile
+        from jobqueues.sgequeue import SgeQueue
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "run.sh"), "w") as f:
+                f.write("test")
+            os.chmod(os.path.join(tmpdir, "run.sh"), 0o700)
+
+            q = SgeQueue(_findExecutables=False)
+            q.queue = "myqueue"
+            q.memory = 5000
+            q.walltime = 30
+            q.prerun = ["touch /tmp/this.file", 'echo "test" > /dev/null']
+            q.datadir = "/tmp/data"
+            q.trajext = "xtc"
+            q.jobname = "SGE_TEST"
+            try:
+                q.submit(tmpdir)
+            except:
+                pass  # Ignore submission error
+
+            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
+                file_text = f.read()
+
+            ref_text = f"""#!/bin/bash
+#
+#$ -N PMSGE_TEST
+#$ -q "myqueue"
+#$ -wd {tmpdir}
+#$ -pe thread 1
+#$ -l ngpus=1
+#$ -l h_vmem=5G
+#$ -v ACEMD_HOME,HTMD_LICENSE_FILE
+#$ -l h_rt=30
+
+trap "touch {tmpdir}/jobqueues.done" EXIT SIGTERM
+
+touch /tmp/this.file
+echo "test" > /dev/null
+
+cd {tmpdir}
+{tmpdir}/run.sh
+
+mv *.xtc /tmp/data/{os.path.basename(tmpdir)}
+"""
+            assert file_text.strip() == ref_text.strip()
+
+
 if __name__ == "__main__":
-    # TODO: Create fake binaries for instance creation testing
-    """
-    q = LsfQueue()
-    """
+    unittest.main(verbosity=2)

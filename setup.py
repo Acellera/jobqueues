@@ -35,6 +35,6 @@ if __name__ == "__main__":
         packages=setuptools.find_packages(
             include=["jobqueues*"], exclude=["test-data"]
         ),
-        package_data={"jobqueues": ["config_*.yml", "logging.ini"],},
+        package_data={"jobqueues": ["config_*.yml", "logging.ini", "templates/*"],},
         install_requires=requirements,
     )

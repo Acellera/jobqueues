@@ -98,3 +98,23 @@ def loadConfig(cls, queuename, _configfile=None, _configapp=None, _logger=True):
             else:
                 setproperties(configuration[_configapp])
 
+
+from jinja2 import (
+    Environment,
+    select_autoescape,
+    PackageLoader,
+    FileSystemLoader,
+    ChoiceLoader,
+)
+
+loaders = []
+
+templates = os.getenv("JOBQUEUES_TEMPLATES")
+if templates is not None:
+    loaders.append(FileSystemLoader(templates))
+
+loaders.append(PackageLoader("jobqueues", "templates"))
+loader = ChoiceLoader(loaders)
+template_env = Environment(
+    loader=loader, trim_blocks=True, autoescape=select_autoescape(["*",]),
+)
