@@ -382,7 +382,8 @@ class _TestSGEQueue(unittest.TestCase):
             q.jobname = "SGE_TEST"
             try:
                 q.submit(tmpdir)
-            except:
+            except Exception as e:
+                print("ERROR:", e)
                 pass  # Ignore submission error
 
             with open(os.path.join(tmpdir, "job.sh"), "r") as f:
