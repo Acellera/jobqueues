@@ -183,14 +183,10 @@ class PBSQueue(SimQueue, ProtocolInterface):
 
             # Move completed trajectories
             if self.datadir is not None:
-                datadir = os.path.abspath(self.datadir)
-                if not os.path.isdir(datadir):
-                    os.mkdir(datadir)
                 simname = os.path.basename(os.path.normpath(workdir))
-                # create directory for new file
-                odir = os.path.join(datadir, simname)
-                os.mkdir(odir)
-                f.write("\nmv *.{} {}".format(self.trajext, odir))
+                datadir = os.path.abspath(os.path.join(self.datadir, simname))
+                os.makedirs(datadir, exist_ok=True)
+                f.write(f"\nmv *.{self.trajext} {datadir}")
 
         os.chmod(fname, 0o700)
 
@@ -219,7 +215,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
         )
 
     def submit(self, dirs):
-        """ Submits all directories
+        """Submits all directories
 
         Parameters
         ----------
@@ -259,7 +255,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
                 raise
 
     def inprogress(self, debug=False):
-        """ Returns the sum of the number of running and queued workunits of the specific group in the engine.
+        """Returns the sum of the number of running and queued workunits of the specific group in the engine.
 
         Returns
         -------
@@ -300,8 +296,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
         return l
 
     def stop(self):
-        """ Cancels all currently running and queued jobs
-        """
+        """Cancels all currently running and queued jobs"""
         import getpass
 
         if self.partition is None:
