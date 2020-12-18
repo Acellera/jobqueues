@@ -1,77 +1,77 @@
-dist: bionic
-addons:
-  apt:
-    # System conda installation: https://docs.conda.io/projects/conda/en/latest/user-guide/install/rpm-debian.html
-    sources:
-      - sourceline: 'deb https://repo.anaconda.com/pkgs/misc/debrepo/conda stable main'
-        key_url: https://repo.anaconda.com/pkgs/misc/gpgkeys/anaconda.asc
-    packages:
-      - conda
+# dist: bionic
+# addons:
+#   apt:
+#     # System conda installation: https://docs.conda.io/projects/conda/en/latest/user-guide/install/rpm-debian.html
+#     sources:
+#       - sourceline: 'deb https://repo.anaconda.com/pkgs/misc/debrepo/conda stable main'
+#         key_url: https://repo.anaconda.com/pkgs/misc/gpgkeys/anaconda.asc
+#     packages:
+#       - conda
       
-language: python
+# language: python
 
-jobs:
-  include:
-    - python: 3.6
-    - python: 3.7
+# jobs:
+#   include:
+#     - python: 3.6
+#     - python: 3.7
 
 
-install:
-  # Enable conda
-  - sudo rm -rf ~/.conda # Fix a conda glitch
-  - /opt/conda/bin/conda init bash
-  - . ~/.bashrc
-  - conda info
+# install:
+#   # Enable conda
+#   - sudo rm -rf ~/.conda # Fix a conda glitch
+#   - /opt/conda/bin/conda init bash
+#   - . ~/.bashrc
+#   - conda info
 
-script:
-    # Set version
-  - if [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then export BUILD_VERSION=$TRAVIS_TAG; else export BUILD_VERSION=0.0.0; fi
-  - export BUILD_NUMBER=0
+# script:
+#     # Set version
+#   - if [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then export BUILD_VERSION=$TRAVIS_TAG; else export BUILD_VERSION=0.0.0; fi
+#   - export BUILD_NUMBER=0
 
-  # Create a build enviroment
-  - conda create -n build -y conda-build
-  - conda activate build
+#   # Create a build enviroment
+#   - conda create -n build -y conda-build
+#   - conda activate build
 
-  # Build a conda package
-  - python ci/travis/insert_placeholder_values.py
-  - conda build --python $TRAVIS_PYTHON_VERSION --no-include-recipe package/jobqueues -c acellera
+#   # Build a conda package
+#   - python ci/travis/insert_placeholder_values.py
+#   - conda build --python $TRAVIS_PYTHON_VERSION --no-include-recipe package/jobqueues -c acellera
 
-  # Create a test environment
-  - conda create -n test -y
-                  codecov
-                  coverage
-                  pytest
-                  python=$TRAVIS_PYTHON_VERSION
-  - conda activate test
+#   # Create a test environment
+#   - conda create -n test -y
+#                   codecov
+#                   coverage
+#                   pytest
+#                   python=$TRAVIS_PYTHON_VERSION
+#   - conda activate test
 
-  # Install the conda package
-  - pip install .
+#   # Install the conda package
+#   - pip install .
 
-  # Run tests
-  - coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
-  - echo "Finished tests"
+#   # Run tests
+#   - coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
+#   - echo "Finished tests"
 
-after_success:
-  - echo "Attempting codecov statistics upload"
-  - codecov
+# after_success:
+#   - echo "Attempting codecov statistics upload"
+#   - codecov
 
-deploy:
-  - provider: pypi
-    skip_cleanup: true
-    distributions: sdist bdist_wheel
-    on:
-      tags: true
-      branch: master
-    user: stefdoerr
-    password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/jobqueues`
-      secure: VURwO0NtBB6axQyKy6ZKf+OFApuViqttcQzOIj/AE5SLdUodgSdx49CfyAU5B+pD5xtuR76k4DTKNRE2RSkLQ3fNjCSNZwHnUrW1kwboFIc4HVD+HiPETOjg7/aaQQqdu3zh8Frl4zRcybJZpRgYEbylrSKOxtFgtborjH9tjiYXmvqWjnl7pP6qCOFPaEqg6jLnj3OYReUoKpQu8BAggUiQ4EpjFAFp0sld1P3dyTfG+pBHKMOTAPli3fQTpkkt4eFN5hdLSwzfQTHq+3E5pPV1exzzlwBgO3vLRMqDtKLcn/PkOZZeHaFJfbz3Nsa9AuNera4avtG0nGJaNCya1/1G1Q7jQofn0n570uZu9z+5gkNY5D23bWP5HCDE8hGmOPV6hEFiw/QBkc4n6nDiN1RzJ312oHAYm4ufIQM/V6l61gUQ+B2oeg3dlSrvJkkGj5Kci6/xZjXbJB78r6IoC0Ps4T1u3EVNsG+JW/Gt7GLWYaquxg7aF672kTuOpdavBZAKt2JSitg3jFSAkofWeQ6pAchpaaUEw2lICz++3NS1fGr++bbi8PoaRuQzjJSkrZoH2lMyK27iuI43YQD6YEJYg0PscCw/VUyzF6d1vAr/9RuAtSVEX54UUFW3rmVOShImHrQXW1NbMFoG2JH3bkyzjKpUp31EhzBpe3hxnWI=
-    skip_existing: true
-    #server: https://test.pypi.org/legacy/
+# deploy:
+#   - provider: pypi
+#     skip_cleanup: true
+#     distributions: sdist bdist_wheel
+#     on:
+#       tags: true
+#       branch: master
+#     user: stefdoerr
+#     password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/jobqueues`
+#       secure: VURwO0NtBB6axQyKy6ZKf+OFApuViqttcQzOIj/AE5SLdUodgSdx49CfyAU5B+pD5xtuR76k4DTKNRE2RSkLQ3fNjCSNZwHnUrW1kwboFIc4HVD+HiPETOjg7/aaQQqdu3zh8Frl4zRcybJZpRgYEbylrSKOxtFgtborjH9tjiYXmvqWjnl7pP6qCOFPaEqg6jLnj3OYReUoKpQu8BAggUiQ4EpjFAFp0sld1P3dyTfG+pBHKMOTAPli3fQTpkkt4eFN5hdLSwzfQTHq+3E5pPV1exzzlwBgO3vLRMqDtKLcn/PkOZZeHaFJfbz3Nsa9AuNera4avtG0nGJaNCya1/1G1Q7jQofn0n570uZu9z+5gkNY5D23bWP5HCDE8hGmOPV6hEFiw/QBkc4n6nDiN1RzJ312oHAYm4ufIQM/V6l61gUQ+B2oeg3dlSrvJkkGj5Kci6/xZjXbJB78r6IoC0Ps4T1u3EVNsG+JW/Gt7GLWYaquxg7aF672kTuOpdavBZAKt2JSitg3jFSAkofWeQ6pAchpaaUEw2lICz++3NS1fGr++bbi8PoaRuQzjJSkrZoH2lMyK27iuI43YQD6YEJYg0PscCw/VUyzF6d1vAr/9RuAtSVEX54UUFW3rmVOShImHrQXW1NbMFoG2JH3bkyzjKpUp31EhzBpe3hxnWI=
+#     skip_existing: true
+#     #server: https://test.pypi.org/legacy/
 
-  - provider: script
-    skip_cleanup: true
-    script: anaconda -t $ANACONDA_TOKEN_BASIC upload -u acellera ~/.conda/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2
-    on:
-      tags: true
-      branch: master
+#   - provider: script
+#     skip_cleanup: true
+#     script: anaconda -t $ANACONDA_TOKEN_BASIC upload -u acellera ~/.conda/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2
+#     on:
+#       tags: true
+#       branch: master
 
