@@ -14,12 +14,14 @@ requirements:
     - protocolinterface
     - psutil
     - pyyaml
+    - jinja2
 
   run:
     - python
     - protocolinterface
     - psutil
     - pyyaml
+    - jinja2
 
 
 about:
