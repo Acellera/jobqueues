@@ -54,6 +54,6 @@ jobs:
     - name: Build and publish conda package
       run: |
         python ci/travis/insert_placeholder_values.py
+        $CONDA/bin/conda install anaconda-client conda-build -y -q
         $CONDA/bin/conda build --python ${{ matrix.python-version }} --no-include-recipe package/jobqueues -c acellera
-        $CONDA/bin/conda install anaconda-client -y -q
         $CONDA/bin/anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera $CONDA/envs/build/conda-bld/linux-64/jobqueues-*.tar.bz2
