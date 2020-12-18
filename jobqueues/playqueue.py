@@ -176,12 +176,12 @@ class PlayQueue(SimQueue, ProtocolInterface):
             returnDict=False, status=(JobStatus.COMPLETED, JobStatus.ERROR)
         )
 
-        for job, st in zip(jobs, statuses):
+        for job in jobs:
             targetdir = os.path.join(self.datadir, job.name)
 
             retdir = job.retrieve(path=retrievedir, skip=True)
 
-            if st != JobStatus.ERROR:
+            if job.getStatus() != JobStatus.ERROR:
                 for fglob in ensurelist(self.copy):
                     currglob = os.path.join(retdir, fglob)
                     if "*" in currglob:
