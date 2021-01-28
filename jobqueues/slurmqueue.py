@@ -254,6 +254,19 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         except Exception as e:
             raise RuntimeError(f"SLURM squeue command failed with error: {e}")
 
+        try:
+            ret = check_output([self._qjobinfo])
+            if "Slurm accounting storage is disabled" in ret:
+                raise RuntimeError(
+                    "Slurm accounting is disabled. Cannot get detailed job info."
+                )
+        except CalledProcessError as e:
+            raise RuntimeError(
+                f"SLURM sacct command failed with error: {e} and errorcode: {e.returncode}"
+            )
+        except Exception as e:
+            raise RuntimeError(f"SLURM sacct command failed with error: {e}")
+
     @staticmethod
     def _find_binary(binary):
         ret = shutil.which(binary, mode=os.X_OK)
@@ -422,10 +435,11 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
         # Check also with sacct because squeue sometimes fails to report the right number
         try:
+            res = self.jobInfo()
+            if res is None:
+                return inprog
             info = [
-                key
-                for key, val in self.jobInfo().items()
-                if val["state"] in _inProgressStatus
+                key for key, val in res.items() if val["state"] in _inProgressStatus
             ]
             if len(info) != inprog:
                 logger.warning(
@@ -480,7 +494,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
 
         # TODO: Is there a specific exit code for this?
         if "Slurm accounting storage is disabled" in ret:
-            raise RuntimeError("Slurm accounting is disabled. Cannot get job info.")
+            return None
 
         lines = ret.splitlines()
         if len(lines) < 2:
