@@ -246,7 +246,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
     def _checkQueue(self):
         # Check if the slurm daemon is running by executing squeue
         try:
-            ret = check_output([self._qstatus])
+            ret = check_output([self._qstatus]).decode("ascii")
         except CalledProcessError as e:
             raise RuntimeError(
                 f"SLURM squeue command failed with error: {e} and errorcode: {e.returncode}"
@@ -255,7 +255,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             raise RuntimeError(f"SLURM squeue command failed with error: {e}")
 
         try:
-            ret = check_output([self._qjobinfo])
+            ret = check_output([self._qjobinfo]).decode("ascii")
             if "Slurm accounting storage is disabled" in ret:
                 raise RuntimeError(
                     "Slurm accounting is disabled. Cannot get detailed job info."
@@ -378,7 +378,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output([self._qsubmit, jobscript])
-                logger.debug(ret)
+                logger.debug(ret.decode("ascii"))
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
