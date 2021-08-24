@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class CeleryQueue(LocalGPUQueue):
-    """ Beta: Queue with support for Celery local queueing
+    """Beta: Queue with support for Celery local queueing
 
     Start a celery server with:
     >>> docker run -d -p 5462:5672 rabbitmq
@@ -101,7 +101,9 @@ class CeleryQueue(LocalGPUQueue):
             dirname = os.path.abspath(d)
             logger.info("Queueing " + dirname)
 
-            runscript = commands[i] if commands is not None else self._getRunScript(dirname)
+            runscript = (
+                commands[i] if commands is not None else self._getRunScript(dirname)
+            )
             self._cleanSentinel(dirname)
 
             if self.usesgpu:
@@ -109,7 +111,12 @@ class CeleryQueue(LocalGPUQueue):
             else:
                 func = self._submitfunc["cpu"]
             async_res = func.delay(
-                dirname, runscript, self._sentinel, self.datadir, self.copy, jobname=self.jobname,
+                dirname,
+                runscript,
+                self._sentinel,
+                self.datadir,
+                self.copy,
+                jobname=self.jobname,
             )
 
     def retrieve(self):

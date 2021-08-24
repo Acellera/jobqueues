@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @enum.unique
 class QueueJobStatus(enum.IntEnum):
-    """ Job status codes """
+    """Job status codes"""
 
     RUNNING = 0
     COMPLETED = 1
@@ -82,12 +82,12 @@ class SimQueue(ABC):
 
     @abstractmethod
     def retrieve(self):
-        """ Subclasses need to implement this method """
+        """Subclasses need to implement this method"""
         pass
 
     @abstractmethod
     def submit(self, dirs, commands=None):
-        """ Subclasses need to implement this method """
+        """Subclasses need to implement this method"""
         pass
 
     def _submitinit(self, dirs):
@@ -102,11 +102,11 @@ class SimQueue(ABC):
 
     @abstractmethod
     def inprogress(self):
-        """ Subclasses need to implement this method """
+        """Subclasses need to implement this method"""
         pass
 
     def wait(self, sentinel=False, sleeptime=5, reporttime=None, reportcallback=None):
-        """ Blocks script execution until all queued work completes
+        """Blocks script execution until all queued work completes
 
         Parameters
         ----------
@@ -206,41 +206,41 @@ class SimQueue(ABC):
 
     @abstractmethod
     def stop(self):
-        """ Subclasses need to implement this method """
+        """Subclasses need to implement this method"""
         pass
 
     @property
     @abstractmethod
     def ncpu(self):
-        """ Subclasses need to have this property """
+        """Subclasses need to have this property"""
         pass
 
     @ncpu.setter
     @abstractmethod
     def ncpu(self, value):
-        """ Subclasses need to have this setter """
+        """Subclasses need to have this setter"""
         pass
 
     @property
     @abstractmethod
     def ngpu(self):
-        """ Subclasses need to have this property """
+        """Subclasses need to have this property"""
         pass
 
     @ngpu.setter
     @abstractmethod
     def ngpu(self, value):
-        """ Subclasses need to have this setter """
+        """Subclasses need to have this setter"""
         pass
 
     @property
     @abstractmethod
     def memory(self):
-        """ Subclasses need to have this property. This property is expected to return a integer in MiB"""
+        """Subclasses need to have this property. This property is expected to return a integer in MiB"""
         pass
 
     @memory.setter
     @abstractmethod
     def memory(self, value):
-        """ Subclasses need to have this setter """
+        """Subclasses need to have this setter"""
         pass

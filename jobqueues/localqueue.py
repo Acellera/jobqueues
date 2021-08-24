@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class _LocalQueue(SimQueue, ProtocolInterface):
-    """ Support class for local machine queue systems
+    """Support class for local machine queue systems
 
     Parameters
     ----------
@@ -148,7 +148,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         self._states[path] = "C"
 
     def retrieve(self):
-        """ Retrieves a list of jobs that have completed since the last call
+        """Retrieves a list of jobs that have completed since the last call
 
         Example
         -------
@@ -164,7 +164,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         return ret
 
     def submit(self, dirs, commands=None):
-        """ Queue for execution all of the jobs in the passed list of directories
+        """Queue for execution all of the jobs in the passed list of directories
 
         Queues all work units in a given directory list with the options given in the constructor opt.
 
@@ -197,7 +197,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
             self._queue.put((dirname, runscript))
 
     def inprogress(self):
-        """ Get the number of simulations in progress
+        """Get the number of simulations in progress
 
         Returns the sum of the number of running and queued workunits of the specific group in the engine.
 
@@ -251,7 +251,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
 
 class LocalGPUQueue(_LocalQueue):
-    """ Local machine queue system
+    """Local machine queue system
 
     The CUDA_VISIBLE_DEVICES environment variable is taken into account when determining the devices to use.
 
@@ -357,7 +357,7 @@ class LocalGPUQueue(_LocalQueue):
 
 
 class LocalCPUQueue(_LocalQueue):
-    """ Local CPU machine queue system
+    """Local CPU machine queue system
 
     Parameters
     ----------

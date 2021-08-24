@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SgeQueue(SimQueue, ProtocolInterface):
-    """ Queue system for Sun Grid Engine
+    """Queue system for Sun Grid Engine
 
     #TODO: SGE documentation
 
@@ -93,7 +93,11 @@ class SgeQueue(SimQueue, ProtocolInterface):
             val.Number(int, "0POS"),
         )
         self._arg(
-            "pe", "str", "SGE Parallel Environment", self._defaults["pe"], val.String(),
+            "pe",
+            "str",
+            "SGE Parallel Environment",
+            self._defaults["pe"],
+            val.String(),
         )
         self._arg(
             "resources",
@@ -235,7 +239,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         )
 
     def submit(self, dirs, commands=None):
-        """ Submits all directories
+        """Submits all directories
 
         Parameters
         ----------
@@ -300,7 +304,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         return ET.fromstring(ret.decode("ascii").strip())
 
     def inprogress(self):
-        """ Returns the sum of the number of running and queued workunits of the specific group in the engine.
+        """Returns the sum of the number of running and queued workunits of the specific group in the engine.
 
         Returns
         -------
@@ -319,8 +323,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
         return count
 
     def stop(self):
-        """ Cancels all currently running and queued jobs
-        """
+        """Cancels all currently running and queued jobs"""
         root = self._getJobStatusTree()
         jobs = root.find("queue_info").findall("job_list")
         if len(jobs) == 0:

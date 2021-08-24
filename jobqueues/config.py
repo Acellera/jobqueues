@@ -116,5 +116,11 @@ if templates is not None:
 loaders.append(PackageLoader("jobqueues", "templates"))
 loader = ChoiceLoader(loaders)
 template_env = Environment(
-    loader=loader, trim_blocks=True, autoescape=select_autoescape(["*",]),
+    loader=loader,
+    trim_blocks=True,
+    autoescape=select_autoescape(
+        [
+            "*",
+        ]
+    ),
 )

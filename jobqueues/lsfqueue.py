@@ -312,7 +312,9 @@ class LsfQueue(SimQueue, ProtocolInterface):
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = commands[i] if commands[i] is not None else self._getRunScript(d)
+            runscript = (
+                commands[i] if commands[i] is not None else self._getRunScript(d)
+            )
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, "job.sh"))
