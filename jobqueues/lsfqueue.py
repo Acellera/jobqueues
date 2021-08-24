@@ -221,11 +221,11 @@ class LsfQueue(SimQueue, ProtocolInterface):
         with open(fname, "w") as f:
             f.write("#!/bin/bash\n")
             f.write("#\n")
-            f.write("#BSUB -J {}\n".format(self.jobname))
+            f.write(f"#BSUB -J {self.jobname}\n")
             f.write('#BSUB -q "{}"\n'.format(" ".join(ensurelist(self.queue))))
-            f.write("#BSUB -n {}\n".format(self.ncpu))
+            f.write(f"#BSUB -n {self.ncpu}\n")
             if self.app is not None:
-                f.write("#BSUB -app {}\n".format(self.app))
+                f.write(f"#BSUB -app {self.app}\n")
             if self.ngpu != 0:
                 if self.version == 9:
                     if self.gpu_options is not None:
@@ -241,24 +241,24 @@ class LsfQueue(SimQueue, ProtocolInterface):
                     if not self.gpu_options:
                         self.gpu_options = {"mode": "exclusive_process"}
                     gpu_requirements = list()
-                    gpu_requirements.append("num={}".format(self.ngpu))
+                    gpu_requirements.append(f"num={self.ngpu}")
                     for i in self.gpu_options:
-                        gpu_requirements.append("{}={}".format(i, self.gpu_options[i]))
+                        gpu_requirements.append(f"{i}={self.gpu_options[i]}")
                     f.write('#BSUB -gpu "{}"\n'.format(":".join(gpu_requirements)))
                 else:
                     raise AttributeError("Version not supported")
             if self.resources is not None:
                 for resource in ensurelist(self.resources):
-                    f.write('#BSUB -R "{}"\n'.format(resource))
-            f.write("#BSUB -M {}\n".format(self.memory))
-            f.write("#BSUB -cwd {}\n".format(workdir))
-            f.write("#BSUB -outdir {}\n".format(workdir))
-            f.write("#BSUB -o {}\n".format(self.outputstream))
-            f.write("#BSUB -e {}\n".format(self.errorstream))
+                    f.write(f'#BSUB -R "{resource}"\n')
+            f.write(f"#BSUB -M {self.memory}\n")
+            f.write(f"#BSUB -cwd {workdir}\n")
+            f.write(f"#BSUB -outdir {workdir}\n")
+            f.write(f"#BSUB -o {self.outputstream}\n")
+            f.write(f"#BSUB -e {self.errorstream}\n")
             if self.envvars is not None:
-                f.write("#BSUB --env {}\n".format(self.envvars))
+                f.write(f"#BSUB --env {self.envvars}\n")
             if self.walltime is not None:
-                f.write("#BSUB -W {}\n".format(self.walltime))
+                f.write(f"#BSUB -W {self.walltime}\n")
             # Trap kill signals to create sentinel file
             f.write(
                 '\ntrap "touch {}" EXIT SIGTERM\n'.format(
@@ -268,9 +268,9 @@ class LsfQueue(SimQueue, ProtocolInterface):
             f.write("\n")
             if self.prerun is not None:
                 for call in ensurelist(self.prerun):
-                    f.write("{}\n".format(call))
-            f.write("\ncd {}\n".format(workdir))
-            f.write("{}".format(runsh))
+                    f.write(f"{call}\n")
+            f.write(f"\ncd {workdir}\n")
+            f.write(runsh)
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -292,7 +292,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         """Submits all directories
 
         Parameters
@@ -306,13 +306,13 @@ class LsfQueue(SimQueue, ProtocolInterface):
             raise ValueError("The queue needs to be defined.")
 
         # if all folders exist, submit
-        for d in dirs:
+        for i, d in enumerate(dirs):
             logger.info("Queueing " + d)
 
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = self._getRunScript(d)
+            runscript = commands[i] if commands[i] is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, "job.sh"))

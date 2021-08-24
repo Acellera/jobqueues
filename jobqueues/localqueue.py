@@ -84,18 +84,17 @@ class _LocalQueue(SimQueue, ProtocolInterface):
         while not self._shutdown:
             path = None
             try:
-                path = queue.get(timeout=1)
+                (path, runsh) = queue.get(timeout=1)
             except:
                 pass
 
-            if path:
+            if path is not None:
                 if deviceid is None:
                     logger.info("Running " + path)
                 else:
                     logger.info("Running " + path + " on device " + str(deviceid))
                 self._setRunning(path)
 
-                runsh = os.path.join(path, "run.sh")
                 jobsh = os.path.join(path, "job.sh")
                 self._createJobScript(jobsh, path, runsh, deviceid)
 
@@ -103,7 +102,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                     ret = check_output(jobsh)
                     logger.debug(ret)
                 except Exception as e:
-                    logger.error("Error in simulation {}. {}".format(path, e))
+                    logger.error(f"Error in simulation {path}. {e}")
                     self._setCompleted(path)
                     queue.task_done()
                     continue
@@ -125,9 +124,9 @@ class _LocalQueue(SimQueue, ProtocolInterface):
             )
             f.write("\n")
             if gpudevice is not None:
-                f.write("export CUDA_VISIBLE_DEVICES={}\n\n".format(gpudevice))
-            f.write("cd {}\n".format(os.path.abspath(workdir)))
-            f.write("{}".format(runsh))
+                f.write(f"export CUDA_VISIBLE_DEVICES={gpudevice}\n\n")
+            f.write(f"cd {os.path.abspath(workdir)}\n")
+            f.write(runsh)
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -164,7 +163,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
 
         return ret
 
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         """ Queue for execution all of the jobs in the passed list of directories
 
         Queues all work units in a given directory list with the options given in the constructor opt.
@@ -187,15 +186,15 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                 raise NameError("Submit: directory " + d + " does not exist.")
 
         # if all folders exist, submit
-        for d in dirs:
+        for i, d in enumerate(dirs):
             dirname = os.path.abspath(d)
             logger.info("Queueing " + dirname)
 
-            runscript = self._getRunScript(d)
+            runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
             self._states[dirname] = "Q"
-            self._queue.put(dirname)
+            self._queue.put((dirname, runscript))
 
     def inprogress(self):
         """ Get the number of simulations in progress

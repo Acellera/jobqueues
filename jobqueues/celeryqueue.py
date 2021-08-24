@@ -89,7 +89,7 @@ class CeleryQueue(LocalGPUQueue):
 
             self._insp = self._app.control.inspect(self._workers)
 
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         dirs = self._submitinit(dirs)
 
         for d in dirs:
@@ -97,11 +97,11 @@ class CeleryQueue(LocalGPUQueue):
                 raise RuntimeError("Submit: directory " + d + " does not exist.")
 
         # if all folders exist, submit
-        for d in dirs:
+        for i, d in enumerate(dirs):
             dirname = os.path.abspath(d)
             logger.info("Queueing " + dirname)
 
-            runscript = self._getRunScript(dirname)
+            runscript = commands[i] if commands is not None else self._getRunScript(dirname)
             self._cleanSentinel(dirname)
 
             if self.usesgpu:
@@ -109,7 +109,7 @@ class CeleryQueue(LocalGPUQueue):
             else:
                 func = self._submitfunc["cpu"]
             async_res = func.delay(
-                dirname, self._sentinel, self.datadir, self.copy, jobname=self.jobname,
+                dirname, runscript, self._sentinel, self.datadir, self.copy, jobname=self.jobname,
             )
 
     def retrieve(self):

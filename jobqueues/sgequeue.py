@@ -234,7 +234,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         """ Submits all directories
 
         Parameters
@@ -248,13 +248,13 @@ class SgeQueue(SimQueue, ProtocolInterface):
             raise ValueError("The queue needs to be defined.")
 
         # if all folders exist, submit
-        for d in dirs:
+        for i, d in enumerate(dirs):
             logger.info("Queueing " + d)
 
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = self._getRunScript(d)
+            runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, "job.sh"))

@@ -86,7 +86,7 @@ class SimQueue(ABC):
         pass
 
     @abstractmethod
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         """ Subclasses need to implement this method """
         pass
 

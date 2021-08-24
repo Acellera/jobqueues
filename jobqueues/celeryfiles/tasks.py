@@ -16,7 +16,7 @@ def kill(proc_pid):
 
 
 @task
-def execute_gpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
+def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os
     import time
@@ -27,7 +27,6 @@ def execute_gpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
         gpu_index = visibledevs[worker_index % len(visibledevs)]
     print(f"Running job on worker index {worker_index} and GPU device {gpu_index}")
 
-    runsh = os.path.join(folder, "run.sh")
     jobsh = os.path.join(folder, "job.sh")
     stdfile = os.path.join(folder, "celery.out")
     _createJobScript(
@@ -54,12 +53,11 @@ def execute_gpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
 
 
 @task
-def execute_cpu_job(folder, sentinel, datadir, copyextensions, jobname=None):
+def execute_cpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os
     import time
 
-    runsh = os.path.join(folder, "run.sh")
     jobsh = os.path.join(folder, "job.sh")
     stdfile = os.path.join(folder, "celery.out")
     _createJobScript(jobsh, folder, runsh, None, sentinel, datadir, copyextensions)
@@ -91,16 +89,14 @@ def _createJobScript(
     with open(fname, "w") as f:
         f.write("#!/bin/bash\n\n")
         f.write(
-            '\ntrap "touch {}" EXIT SIGTERM SIGINT\n'.format(
-                os.path.normpath(os.path.join(workdir, sentinel))
-            )
+            f'\ntrap "touch {os.path.normpath(os.path.join(workdir, sentinel))}" EXIT SIGTERM SIGINT\n'
         )
         f.write("\n")
         if deviceid is not None:
-            f.write("export CUDA_VISIBLE_DEVICES={}\n\n".format(deviceid))
+            f.write(f"export CUDA_VISIBLE_DEVICES={deviceid}\n\n")
 
-        f.write("cd {}\n".format(os.path.abspath(workdir)))
-        f.write("{}".format(runsh))
+        f.write(f"cd {os.path.abspath(workdir)}\n")
+        f.write(runsh)
 
         # Move completed trajectories
         if datadir is not None:

@@ -149,23 +149,21 @@ class PBSQueue(SimQueue, ProtocolInterface):
             f.write("#!/bin/bash\n")
             f.write("#\n")
             if self.jobname:
-                f.write("#PBS -N={}\n".format(self.jobname))
+                f.write(f"#PBS -N={self.jobname}\n")
             f.write(
-                "#PBS -lselect=1:ncpus={}:ngpus={}:mem={}MB".format(
-                    self.ncpu, self.ngpu, self.memory
-                )
+                f"#PBS -lselect=1:ncpus={self.ncpu}:ngpus={self.ngpu}:mem={self.memory}MB"
             )
             if self.scratch_local is not None:
-                f.write(":scratch_local={}MB".format(self.scratch_local))
+                f.write(f":scratch_local={self.scratch_local}MB")
             if self.cluster is not None:
-                f.write(":cl_{}=True".format(self.cluster))
+                f.write(f":cl_{self.cluster}=True")
             f.write("\n")
             if self.queue:
-                f.write("#PBS -q  %s\n" % self.queue)
+                f.write(f"#PBS -q  {self.queue}\n")
             hours = int(self.walltime / 3600)
             minutes = int((self.walltime % 3600) / 60)
             seconds = self.walltime % 3600 % 60
-            f.write("#PBS -lwalltime={}:{}:{}\n".format(hours, minutes, seconds))
+            f.write(f"#PBS -lwalltime={hours}:{minutes}:{seconds}\n")
             if self.environment is not None:
                 a = []
                 for i in self.environment.split(","):
@@ -178,8 +176,8 @@ class PBSQueue(SimQueue, ProtocolInterface):
                     os.path.normpath(os.path.join(workdir, self._sentinel))
                 )
             )
-            f.write("\ncd {}\n".format(workdir))
-            f.write("{}".format(runsh))
+            f.write(f"\ncd {workdir}\n")
+            f.write(runsh)
 
             # Move completed trajectories
             if self.datadir is not None:
@@ -214,7 +212,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs):
+    def submit(self, dirs, commands=None):
         """Submits all directories
 
         Parameters
@@ -228,13 +226,13 @@ class PBSQueue(SimQueue, ProtocolInterface):
             self.queue = self._autoQueueName()
 
         # if all folders exist, submit
-        for d in dirs:
+        for i, d in enumerate(dirs):
             logger.info("Queueing " + d)
 
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = self._getRunScript(d)
+            runscript = commands[i] if commands[i] is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, "job.sh"))
