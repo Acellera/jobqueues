@@ -593,11 +593,12 @@ class _TestSlurmQueue(unittest.TestCase):
             reflines = [
                 "#!/bin/bash\n",
                 "#\n",
-                "#SBATCH --job-name=tmpsq6jxnic_64563\n",
+                "#SBATCH --job-name=tmpwnq0uoqw_28851\n",
                 "#SBATCH --partition=jobqueues_test\n",
                 "#SBATCH --cpus-per-task=1\n",
                 "#SBATCH --mem=1000\n",
                 "#SBATCH --priority=None\n",
+                "#SBATCH -D=/tmp/\n",
                 "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
                 "#SBATCH --export=TEST=3\n",
                 "#SBATCH --nodelist=node2\n",
