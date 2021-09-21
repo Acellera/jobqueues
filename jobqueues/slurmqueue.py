@@ -278,66 +278,64 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
+        from jobqueues.config import template_env
+
         workdir = os.path.abspath(workdir)
+        sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
+
+        # Move completed trajectories
+        odir = None
+        if self.datadir is not None:
+            simname = os.path.basename(os.path.normpath(workdir))
+            odir = os.path.abspath(os.path.join(self.datadir, simname))
+
+        gpustring = None
+        if self.ngpu != 0:
+            gpustring = f"gpu:{self.ngpu}"
+            if self.gpumemory is not None:
+                gpustring += f",gpu_mem:{self.gpumemory}"
+
+        prerun = self.prerun if self.prerun is not None else []
+        errorstream = self.errorstream
+        outputstream = self.outputstream
+        if not os.path.isfile(runsh):
+            workdir = None
+            errorstream = None
+            outputstream = None
+            sentinel = None
+        else:
+            prerun += [f"cd {workdir}"]
+
+        template = template_env.get_template("SLURM_job.sh.j2")
+        job_str = template.render(
+            jobname=self.jobname,
+            partition=",".join(ensurelist(self.partition)),
+            ncpu=self.ncpu,
+            memory=self.memory,
+            priority=self.priority,
+            workdir=workdir,
+            gpustring=gpustring,
+            outputstream=outputstream,
+            errorstream=errorstream,
+            envvars=self.envvars,
+            time=self.walltime,
+            mailtype=self.mailtype,
+            mailuser=self.mailuser,
+            nodelist=",".join(ensurelist(self.nodelist))
+            if self.nodelist is not None
+            else None,
+            exclude=",".join(ensurelist(self.exclude))
+            if self.exclude is not None
+            else None,
+            account=self.account,
+            sentinel=sentinel,
+            prerun=prerun,
+            runsh=runsh,
+            odir=odir,
+            trajext=self.trajext,
+        )
         with open(fname, "w") as f:
-            f.write("#!/bin/bash\n")
-            f.write("#\n")
-            f.write("#SBATCH --job-name={}\n".format(self.jobname))
-            f.write(
-                "#SBATCH --partition={}\n".format(",".join(ensurelist(self.partition)))
-            )
-            if self.ngpu != 0:
-                f.write("#SBATCH --gres=gpu:{}".format(self.ngpu))
-                if self.gpumemory is not None:
-                    f.write(",gpu_mem:{}".format(self.gpumemory))
-                f.write("\n")
-            f.write("#SBATCH --cpus-per-task={}\n".format(self.ncpu))
-            f.write("#SBATCH --mem={}\n".format(self.memory))
-            f.write("#SBATCH --priority={}\n".format(self.priority))
-            f.write(
-                "#SBATCH -D {}\n".format(workdir)
-            )  # Don't use the long version. Depending on SLURM version it's workdir or chdir
-            f.write("#SBATCH --output={}\n".format(self.outputstream))
-            f.write("#SBATCH --error={}\n".format(self.errorstream))
-            if self.envvars is not None:
-                f.write("#SBATCH --export={}\n".format(self.envvars))
-            if self.walltime is not None:
-                f.write("#SBATCH --time={}\n".format(self.walltime))
-            if self.mailtype is not None and self.mailuser is not None:
-                f.write("#SBATCH --mail-type={}\n".format(self.mailtype))
-                f.write("#SBATCH --mail-user={}\n".format(self.mailuser))
-            if self.nodelist is not None:
-                f.write(
-                    "#SBATCH --nodelist={}\n".format(
-                        ",".join(ensurelist(self.nodelist))
-                    )
-                )
-            if self.exclude is not None:
-                f.write(
-                    "#SBATCH --exclude={}\n".format(",".join(ensurelist(self.exclude)))
-                )
-            if self.account is not None:
-                f.write("#SBATCH --account={}\n".format(self.account))
-            # Trap kill signals to create sentinel file
-            f.write(
-                '\ntrap "touch {}" EXIT SIGTERM\n'.format(
-                    os.path.normpath(os.path.join(workdir, self._sentinel))
-                )
-            )
-            f.write("\n")
-            if self.prerun is not None:
-                for call in ensurelist(self.prerun):
-                    f.write("{}\n".format(call))
-            f.write("\ncd {}\n".format(workdir))
-            f.write(runsh)
-
-            # Move completed trajectories
-            if self.datadir is not None:
-                simname = os.path.basename(os.path.normpath(workdir))
-                datadir = os.path.abspath(os.path.join(self.datadir, simname))
-                os.makedirs(datadir, exist_ok=True)
-                f.write(f"\nmv *.{self.trajext} {datadir}")
-
+            f.write(job_str)
         os.chmod(fname, 0o700)
 
     def retrieve(self):
@@ -371,9 +369,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = (
-                commands[i] if commands[i] is not None else self._getRunScript(d)
-            )
+            runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, "job.sh"))
@@ -565,6 +561,111 @@ class _TestSlurmQueue(unittest.TestCase):
                 assert (
                     sq.__getattribute__(key) == reference[appkey][key]
                 ), f'Config setup of SlurmQueue failed on app "{appkey}" and key "{key}""'
+
+    def test_submit_command(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sl = SlurmQueue(_findExecutables=False)
+            sl.partition = "jobqueues_test"
+            sl.ngpu = 2
+            sl.gpumemory = 2000
+            sl.exclude = ["node1", "node4"]
+            sl.nodelist = ["node2"]
+            sl.envvars = "TEST=3"
+            try:
+                sl.submit([tmpdir], commands=["sleep 5"])
+            except Exception:
+                pass
+
+            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
+                joblines = f.readlines()
+
+            reflines = [
+                "#!/bin/bash\n",
+                "#\n",
+                "#SBATCH --job-name=tmpsq6jxnic_64563\n",
+                "#SBATCH --partition=jobqueues_test\n",
+                "#SBATCH --cpus-per-task=1\n",
+                "#SBATCH --mem=1000\n",
+                "#SBATCH --priority=None\n",
+                "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
+                "#SBATCH --export=TEST=3\n",
+                "#SBATCH --nodelist=node2\n",
+                "#SBATCH --exclude=node1,node4\n",
+                "\n",
+                "\n",
+                "\n",
+                "sleep 5\n",
+                "\n",
+            ]
+            skiplines = [2]
+
+            assert len(joblines) == len(reflines)
+            for i, (l1, l2) in enumerate(zip(reflines, joblines)):
+                if i in skiplines:
+                    continue
+                assert (
+                    l1 == l2
+                ), f"Difference found in line {i} of job file: {l1} vs {l2}"
+
+    def test_submit_folder(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "run.sh"), "w") as f:
+                f.write("sleep 5")
+            os.chmod(os.path.join(tmpdir, "run.sh"), 0o700)
+
+            sl = SlurmQueue(_findExecutables=False)
+            sl.partition = "jobqueues_test"
+            sl.ngpu = 2
+            sl.gpumemory = 2000
+            sl.exclude = ["node1", "node4"]
+            sl.nodelist = ["node2"]
+            sl.envvars = "TEST=3"
+            try:
+                sl.submit(tmpdir)
+            except Exception:
+                pass
+
+            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
+                joblines = f.readlines()
+
+            reflines = [
+                "#!/bin/bash\n",
+                "#\n",
+                "#SBATCH --job-name=tmp8dj2zuya_44185\n",
+                "#SBATCH --partition=jobqueues_test\n",
+                "#SBATCH --cpus-per-task=1\n",
+                "#SBATCH --mem=1000\n",
+                "#SBATCH --priority=None\n",
+                "#SBATCH -D=tmpdir\n",
+                "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
+                "#SBATCH --output=slurm.%N.%j.out\n",
+                "#SBATCH --error=slurm.%N.%j.err\n",
+                "#SBATCH --export=TEST=3\n",
+                "#SBATCH --nodelist=node2\n",
+                "#SBATCH --exclude=node1,node4\n",
+                "\n",
+                'trap "touch tmpdir/jobqueues.done" EXIT SIGTERM\n',
+                "\n",
+                "cd tmpdir\n",
+                "\n",
+                "tmpdir/run.sh\n",
+                "\n",
+            ]
+            skiplines = [2]
+
+            assert len(joblines) == len(reflines)
+            for i, (l1, l2) in enumerate(zip(reflines, joblines)):
+                l1 = l1.replace(tmpdir, "tmpdir")
+                l2 = l2.replace(tmpdir, "tmpdir")
+                if i in skiplines:
+                    continue
+                assert (
+                    l1 == l2
+                ), f"Difference found in line {i} of job file: {l1} vs {l2}"
 
 
 if __name__ == "__main__":
