@@ -230,6 +230,13 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             getpass.getuser(),
             val.String(),
         )
+        self._arg(
+            "useworkdir",
+            "bool",
+            "Set to False to not use a working dir",
+            True,
+            val.Boolean(),
+        )
 
         # Load Slurm configuration profile
         loadConfig(self, "slurm", _configfile, _configapp, _logger)
@@ -298,7 +305,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         prerun = self.prerun if self.prerun is not None else []
         errorstream = self.errorstream
         outputstream = self.outputstream
-        if not os.path.isfile(runsh):
+        if not self.useworkdir:
             workdir = None
             errorstream = None
             outputstream = None
@@ -573,9 +580,11 @@ class _TestSlurmQueue(unittest.TestCase):
             sl.exclude = ["node1", "node4"]
             sl.nodelist = ["node2"]
             sl.envvars = "TEST=3"
+            sl.useworkdir = False
             try:
                 sl.submit([tmpdir], commands=["sleep 5"])
-            except Exception:
+            except Exception as e:
+                print(e)
                 pass
 
             with open(os.path.join(tmpdir, "job.sh"), "r") as f:
@@ -626,7 +635,8 @@ class _TestSlurmQueue(unittest.TestCase):
             sl.envvars = "TEST=3"
             try:
                 sl.submit(tmpdir)
-            except Exception:
+            except Exception as e:
+                print(e)
                 pass
 
             with open(os.path.join(tmpdir, "job.sh"), "r") as f:

@@ -233,7 +233,7 @@ class PBSQueue(SimQueue, ProtocolInterface):
                 self.jobname = self._autoJobName(d)
 
             runscript = (
-                commands[i] if commands[i] is not None else self._getRunScript(d)
+                commands[i] if commands is not None else self._getRunScript(d)
             )
             self._cleanSentinel(d)
 
