@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+#SBATCH --job-name={{ jobname }}
+#SBATCH --partition={{ partition }}
+#SBATCH --cpus-per-task={{ ncpu }}
+#SBATCH --mem={{ memory }}
+#SBATCH --priority={{ priority }}
+{% if workdir is not none %}#SBATCH -D={{ workdir }}
+{% endif %}
+{% if gpustring is not none %}#SBATCH --gres={{ gpustring }}
+{% endif %}
+{% if outputstream is not none %}#SBATCH --output={{ outputstream }}
+{% endif %}
+{% if errorstream is not none %}#SBATCH --error={{ errorstream }}
+{% endif %}
+{% if envvars is not none %}#SBATCH --export={{ envvars }}
+{% endif %}
+{% if time is not none %}#SBATCH --time={{ time }}
+{% endif %}
+{% if mailtype is not none %}#SBATCH --mail-type={{ mailtype }}
+{% endif %}
+{% if mailuser is not none %}#SBATCH --mail-user={{ mailuser }}
+{% endif %}
+{% if nodelist is not none %}#SBATCH --nodelist={{ nodelist }}
+{% endif %}
+{% if exclude is not none %}#SBATCH --exclude={{ exclude }}
+{% endif %}
+{% if account is not none %}#SBATCH --account={{ account }}
+{% endif %}
+
+{% if sentinel is not none %}trap "touch {{ sentinel }}" EXIT SIGTERM
+{% endif %}
+
+{% for cmd in prerun %}
+{{ cmd }}
+{% endfor %}
+
+{{ runsh }}
+
+{% if odir is not none %}
+mkdir -p {{ odir }}
+mv *.{{ trajext }} {{ odir }}
+{% endif %}
