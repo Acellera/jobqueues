@@ -306,7 +306,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         errorstream = self.errorstream
         outputstream = self.outputstream
         if not self.useworkdir:
-            workdir = None
+            workdir = "/tmp/"
             errorstream = None
             outputstream = None
             sentinel = None
