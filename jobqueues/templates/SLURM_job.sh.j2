@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task={{ ncpu }}
 #SBATCH --mem={{ memory }}
 #SBATCH --priority={{ priority }}
-{% if workdir is not none %}#SBATCH -D={{ workdir }}
+{% if workdir is not none %}#SBATCH -D {{ workdir }}
 {% endif %}
 {% if gpustring is not none %}#SBATCH --gres={{ gpustring }}
 {% endif %}
