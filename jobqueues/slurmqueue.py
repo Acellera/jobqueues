@@ -14,6 +14,7 @@ from protocolinterface import ProtocolInterface, val
 from jobqueues.simqueue import SimQueue, QueueJobStatus, _inProgressStatus
 from jobqueues.util import ensurelist
 import getpass
+import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -247,7 +248,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             self._qinfo = SlurmQueue._find_binary("sinfo")
             self._qcancel = SlurmQueue._find_binary("scancel")
             self._qstatus = SlurmQueue._find_binary("squeue")
-            self._qjobinfo = SlurmQueue._find_binary("sacct")
+            self._qjobinfo = SlurmQueue._find_binary("sacct", permissive=True)
             self._checkQueue()
 
     def _checkQueue(self):
@@ -267,17 +268,15 @@ class SlurmQueue(SimQueue, ProtocolInterface):
                 raise RuntimeError(
                     "Slurm accounting is disabled. Cannot get detailed job info."
                 )
-        except CalledProcessError as e:
-            raise RuntimeError(
-                f"SLURM sacct command failed with error: {e} and errorcode: {e.returncode}"
-            )
         except Exception as e:
-            raise RuntimeError(f"SLURM sacct command failed with error: {e}")
+            print(f"SLURM sacct command failed with error: {e}")
 
     @staticmethod
-    def _find_binary(binary):
+    def _find_binary(binary, permissive=False):
         ret = shutil.which(binary, mode=os.X_OK)
         if not ret:
+            if permissive:
+                return None
             raise FileNotFoundError(
                 "Could not find required executable [{}]".format(binary)
             )
@@ -387,7 +386,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
-            except:
+            except Exception:
                 raise
 
     def _robust_check_output(self, cmd, maxtries=3):
@@ -415,8 +414,6 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         total : int
             Total running and queued workunits
         """
-        import time
-
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
 
@@ -474,8 +471,6 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             logger.debug(ret.decode("ascii"))
 
     def jobInfo(self):
-        from jobqueues.simqueue import QueueJobStatus
-
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
 
@@ -546,9 +541,6 @@ class SlurmQueue(SimQueue, ProtocolInterface):
     @memory.setter
     def memory(self, value):
         self.memory = value
-
-
-import unittest
 
 
 class _TestSlurmQueue(unittest.TestCase):
