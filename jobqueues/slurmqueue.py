@@ -262,14 +262,15 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         except Exception as e:
             raise RuntimeError(f"SLURM squeue command failed with error: {e}")
 
-        try:
-            ret = check_output([self._qjobinfo]).decode("ascii")
-            if "Slurm accounting storage is disabled" in ret:
-                raise RuntimeError(
-                    "Slurm accounting is disabled. Cannot get detailed job info."
-                )
-        except Exception as e:
-            print(f"SLURM sacct command failed with error: {e}")
+        if self._qjobinfo is not None:
+            try:
+                ret = check_output([self._qjobinfo]).decode("ascii")
+                if "Slurm accounting storage is disabled" in ret:
+                    raise RuntimeError(
+                        "Slurm accounting is disabled. Cannot get detailed job info."
+                    )
+            except Exception as e:
+                print(f"SLURM sacct command failed with error: {e}")
 
     @staticmethod
     def _find_binary(binary, permissive=False):
@@ -436,20 +437,21 @@ class SlurmQueue(SimQueue, ProtocolInterface):
         inprog = max(0, len(lines) - 1)
 
         # Check also with sacct because squeue sometimes fails to report the right number
-        try:
-            res = self.jobInfo()
-            if res is None:
-                return inprog
-            info = [
-                key for key, val in res.items() if val["state"] in _inProgressStatus
-            ]
-            if len(info) != inprog:
-                logger.warning(
-                    f"squeue and sacct gave different number of running jobs ({inprog}/{len(info)}) with name {self.jobname}. Using the max of the two."
-                )
-            inprog = max(inprog, len(info))
-        except Exception as e:
-            logger.warning(f"Failed to get jobInfo with error: {e}")
+        if self._qjobinfo is not None:
+            try:
+                res = self.jobInfo()
+                if res is None:
+                    return inprog
+                info = [
+                    key for key, val in res.items() if val["state"] in _inProgressStatus
+                ]
+                if len(info) != inprog:
+                    logger.warning(
+                        f"squeue and sacct gave different number of running jobs ({inprog}/{len(info)}) with name {self.jobname}. Using the max of the two."
+                    )
+                inprog = max(inprog, len(info))
+            except Exception as e:
+                logger.warning(f"Failed to get jobInfo with error: {e}")
 
         return inprog
 
