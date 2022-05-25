@@ -238,6 +238,27 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             True,
             val.Boolean(),
         )
+        self._arg(
+            "nodes",
+            "int",
+            "Number of nodes to request",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "ntasks",
+            "int",
+            "Total number of tasks",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "ntasks_per_node",
+            "int",
+            "Number of tasks each node will run",
+            None,
+            val.Number(int, "0POS"),
+        )
 
         # Load Slurm configuration profile
         loadConfig(self, "slurm", _configfile, _configapp, _logger)
