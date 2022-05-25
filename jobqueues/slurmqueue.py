@@ -361,6 +361,9 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             runsh=runsh,
             odir=odir,
             trajext=self.trajext,
+            nodes=self.nodes,
+            ntasks=self.ntasks,
+            ntasks_per_node=self.ntasks_per_node,
         )
         with open(fname, "w") as f:
             f.write(job_str)
