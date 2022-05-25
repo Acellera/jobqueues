@@ -1,6 +1,5 @@
 import setuptools
 import subprocess
-import os
 
 try:
     version = (
@@ -8,7 +7,7 @@ try:
         .strip()
         .decode("utf-8")
     )
-except Exception as e:
+except Exception:
     print("Could not get version tag. Defaulting to version 0")
     version = "0"
 
