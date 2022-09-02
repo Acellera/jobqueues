@@ -40,7 +40,7 @@ def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
     try:
         with open(stdfile, "a") as fout:
             process = subprocess.Popen(
-                ["/bin/sh", jobsh], stdout=fout, stderr=fout, shell=False
+                ["/bin/bash", jobsh], stdout=fout, stderr=fout, shell=False
             )
             _ = process.communicate()
     except SoftTimeLimitExceeded:
@@ -69,7 +69,7 @@ def execute_cpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
     try:
         with open(stdfile, "a") as fout:
             process = subprocess.Popen(
-                ["/bin/sh", jobsh], stdout=fout, stderr=fout, shell=False
+                ["/bin/bash", jobsh], stdout=fout, stderr=fout, shell=False
             )
             _ = process.communicate()
     except SoftTimeLimitExceeded:
