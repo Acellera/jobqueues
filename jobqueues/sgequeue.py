@@ -8,18 +8,17 @@ import shutil
 import random
 import string
 from subprocess import check_output, CalledProcessError, DEVNULL
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
 from jobqueues.config import loadConfig
 from math import ceil
-import yaml
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class SgeQueue(SimQueue, ProtocolInterface):
+class SgeQueue(SimQueue):
     """Queue system for Sun Grid Engine
 
     #TODO: SGE documentation
@@ -52,8 +51,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
     def __init__(
         self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
     ):
-        SimQueue.__init__(self)
-        ProtocolInterface.__init__(self)
+        super().__init__()
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._arg(
             "queue",
@@ -167,7 +165,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
     def _checkQueue(self):
         # Check if the slurm daemon is running by executing squeue
         try:
-            ret = check_output([self._qstatus])
+            _ = check_output([self._qstatus])
         except CalledProcessError as e:
             raise RuntimeError(
                 f"SGE qstat command failed with error: {e} and errorcode: {e.returncode}"
@@ -261,7 +259,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
             runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
+            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output(self._qsubmit + " < " + jobscript, shell=True)
@@ -269,7 +267,7 @@ class SgeQueue(SimQueue, ProtocolInterface):
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
-            except:
+            except Exception:
                 raise
 
     def _getJobStatusTree(self):
@@ -361,8 +359,6 @@ class SgeQueue(SimQueue, ProtocolInterface):
     def memory(self, value):
         self.memory = value
 
-
-import unittest
 
 # # Had to disable testing because pytest 6.0.0rc1 is incompatible with jinja 2.11.2. If they ever fix this issue enable again
 

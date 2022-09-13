@@ -8,17 +8,18 @@ import shutil
 import random
 import string
 from subprocess import check_output, CalledProcessError, DEVNULL
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.simqueue import SimQueue
 from jobqueues.util import ensurelist
 from jobqueues.config import loadConfig
+import unittest
 import yaml
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class LsfQueue(SimQueue, ProtocolInterface):
+class LsfQueue(SimQueue):
     """Queue system for LSF
 
     Parameters
@@ -86,8 +87,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
     def __init__(
         self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
     ):
-        SimQueue.__init__(self)
-        ProtocolInterface.__init__(self)
+        super().__init__()
         self._arg(
             "version",
             "int",
@@ -312,12 +312,10 @@ class LsfQueue(SimQueue, ProtocolInterface):
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = (
-                commands[i] if commands is not None else self._getRunScript(d)
-            )
+            runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
+            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output(self._qsubmit + " < " + jobscript, shell=True)
@@ -325,7 +323,7 @@ class LsfQueue(SimQueue, ProtocolInterface):
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
-            except:
+            except Exception:
                 raise
 
     def inprogress(self):
@@ -365,11 +363,11 @@ class LsfQueue(SimQueue, ProtocolInterface):
             logger.debug(ret.decode("ascii"))
 
             # TODO: check lines and handle errors
-            l = ret.decode("ascii").split("\n")
-            l = len(l) - 2
-            if l < 0:
-                l = 0  # something odd happened
-            l_total += l
+            lines = ret.decode("ascii").split("\n")
+            lines = len(lines) - 2
+            if lines < 0:
+                lines = 0  # something odd happened
+            l_total += lines
         return l_total
 
     def stop(self):
@@ -416,9 +414,6 @@ class LsfQueue(SimQueue, ProtocolInterface):
     @memory.setter
     def memory(self, value):
         self.memory = value
-
-
-import unittest
 
 
 class _TestLsfQueue(unittest.TestCase):

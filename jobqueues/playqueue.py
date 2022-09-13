@@ -3,17 +3,11 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-import json
 import logging
 import os
 import shutil
-import sys
-import tempfile
-import time
-import zipfile
-
 from jobqueues.simqueue import SimQueue
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.config import loadConfig
 
 logger = logging.getLogger(__name__)
@@ -27,14 +21,13 @@ def _symlinkorcopy(ff, targetdir, symlink):
         shutil.copytree(ff, targetdir)
 
 
-class PlayQueue(SimQueue, ProtocolInterface):
+class PlayQueue(SimQueue):
     def __init__(
         self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
     ):
         from playmolecule import Session, Job
 
-        SimQueue.__init__(self)
-        ProtocolInterface.__init__(self)
+        super().__init__()
 
         self._arg(
             "parentjob",
@@ -165,7 +158,6 @@ class PlayQueue(SimQueue, ProtocolInterface):
         return len(jobs)
 
     def retrieve(self):
-        import shutil
         from glob import glob
         from playmolecule import JobStatus
         from jobqueues.util import ensurelist

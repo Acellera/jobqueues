@@ -1,5 +1,5 @@
 from jobqueues.localqueue import LocalGPUQueue
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.config import loadConfig
 import os
 import logging
@@ -110,7 +110,7 @@ class CeleryQueue(LocalGPUQueue):
                 func = self._submitfunc["gpu"]
             else:
                 func = self._submitfunc["cpu"]
-            async_res = func.delay(
+            _ = func.delay(
                 dirname,
                 runscript,
                 self._sentinel,

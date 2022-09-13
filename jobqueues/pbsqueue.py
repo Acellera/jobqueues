@@ -8,7 +8,7 @@ import shutil
 import random
 import string
 from subprocess import check_output, CalledProcessError
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.simqueue import SimQueue
 from jobqueues.config import loadConfig
 import logging
@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class PBSQueue(SimQueue, ProtocolInterface):
+class PBSQueue(SimQueue):
     """
 
     .. warning:: This queue system has not been tested and can possibly fail.
@@ -232,12 +232,10 @@ class PBSQueue(SimQueue, ProtocolInterface):
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = (
-                commands[i] if commands is not None else self._getRunScript(d)
-            )
+            runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
+            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output([self._qsubmit, jobscript])
@@ -245,13 +243,13 @@ class PBSQueue(SimQueue, ProtocolInterface):
                     jid = ret.decode("ascii").split("\n")[0]
                     self._joblist.append(jid)
                     logger.info("Job id %s" % jid)
-                except:
+                except Exception:
                     pass
                 logger.debug(ret)
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
-            except:
+            except Exception:
                 raise
 
     def inprogress(self, debug=False):
@@ -289,15 +287,14 @@ class PBSQueue(SimQueue, ProtocolInterface):
         logger.debug(ret.decode("ascii"))
 
         # TODO: check lines and handle errors
-        l = ret.decode("ascii").split("\n")
-        l = len(l) - 2
-        if l < 0:
-            l = 0  # something odd happened
-        return l
+        lines = ret.decode("ascii").split("\n")
+        lines = len(lines) - 2
+        if lines < 0:
+            lines = 0  # something odd happened
+        return lines
 
     def stop(self):
         """Cancels all currently running and queued jobs"""
-        import getpass
 
         if self.partition is None:
             raise ValueError("The partition needs to be defined.")

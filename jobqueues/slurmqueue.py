@@ -10,7 +10,7 @@ import string
 from jobqueues.config import loadConfig
 import yaml
 from subprocess import check_output, CalledProcessError
-from protocolinterface import ProtocolInterface, val
+from protocolinterface import val
 from jobqueues.simqueue import SimQueue, QueueJobStatus, _inProgressStatus
 from jobqueues.util import ensurelist
 import getpass
@@ -39,7 +39,7 @@ JOB_STATE_CODES = {
 }
 
 
-class SlurmQueue(SimQueue, ProtocolInterface):
+class SlurmQueue(SimQueue):
     """Queue system for SLURM
 
     Parameters
@@ -103,8 +103,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
     def __init__(
         self, _configapp=None, _configfile=None, _findExecutables=True, _logger=True
     ):
-        SimQueue.__init__(self)
-        ProtocolInterface.__init__(self)
+        super().__init__()
         self._arg("jobname", "str", "Job name (identifier)", None, val.String())
         self._arg(
             "partition",
@@ -403,7 +402,7 @@ class SlurmQueue(SimQueue, ProtocolInterface):
             runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, "job.sh"))
+            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output([self._qsubmit, jobscript])

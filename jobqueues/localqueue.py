@@ -4,13 +4,12 @@
 # No redistribution in whole or part
 #
 from jobqueues.simqueue import SimQueue
-from jobqueues.util import _getCPUdevices, _getGPUdevices, _filterVisibleGPUdevices
-from protocolinterface import ProtocolInterface, val
+from jobqueues.util import _getGPUdevices, _filterVisibleGPUdevices
+from protocolinterface import val
 import queue
 import os
 import threading
 from subprocess import check_output
-from glob import glob as glob
 from abc import abstractmethod
 import logging
 import psutil
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 # TODO: Merge CPU and GPU queue into a single one which manages ncpu and ngpu simultaneously
 
 
-class _LocalQueue(SimQueue, ProtocolInterface):
+class _LocalQueue(SimQueue):
     """Support class for local machine queue systems
 
     Parameters
@@ -35,8 +34,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
     """
 
     def __init__(self):
-        SimQueue.__init__(self)
-        ProtocolInterface.__init__(self)
+        super().__init__()
         self._arg(
             "datadir",
             "str",
@@ -85,7 +83,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
             path = None
             try:
                 (path, runsh) = queue.get(timeout=1)
-            except:
+            except Exception:
                 pass
 
             if path is not None:
@@ -95,7 +93,7 @@ class _LocalQueue(SimQueue, ProtocolInterface):
                     logger.info("Running " + path + " on device " + str(deviceid))
                 self._setRunning(path)
 
-                jobsh = os.path.join(path, "job.sh")
+                jobsh = os.path.join(path, self.jobscript)
                 self._createJobScript(jobsh, path, runsh, deviceid)
 
                 try:
@@ -460,7 +458,6 @@ class LocalCPUQueue(_LocalQueue):
 
 
 if __name__ == "__main__":
-    import os
     import jobqueues
     import inspect
 

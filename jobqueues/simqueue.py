@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 from abc import ABC, abstractmethod
+from protocolinterface import ProtocolInterface, val
 import logging
 import enum
 
@@ -73,12 +74,27 @@ class ProjectNotExistError(Exception):
         return repr(self.value)
 
 
-class SimQueue(ABC):
+class SimQueue(ABC, ProtocolInterface):
     def __init__(self):
         super().__init__()
+        ProtocolInterface.__init__(self)
         self._sentinel = "jobqueues.done"
         # For synchronous
         self._dirs = None
+        self._arg(
+            "runscript",
+            "str",
+            "Name of the run script to execute",
+            "run.sh",
+            val.String(),
+        )
+        self._arg(
+            "jobscript",
+            "str",
+            "Name of the automatically generated job script",
+            "job.sh",
+            val.String(),
+        )
 
     @abstractmethod
     def retrieve(self):
@@ -183,24 +199,20 @@ class SimQueue(ABC):
         if os.path.exists(os.path.join(d, self._sentinel)):
             try:
                 os.remove(os.path.join(d, self._sentinel))
-            except:
-                logger.warning(
-                    "Could not remove {} sentinel from {}".format(self._sentinel, d)
-                )
+            except Exception:
+                logger.warning(f"Could not remove {self._sentinel} sentinel from {d}")
             else:
-                logger.debug(
-                    "Removed existing {} sentinel from {}".format(self._sentinel, d)
-                )
+                logger.debug(f"Removed existing {self._sentinel} sentinel from {d}")
 
     def _getRunScript(self, d):
         import os
 
-        runscript = os.path.abspath(os.path.join(d, "run.sh"))
+        runscript = os.path.abspath(os.path.join(d, self.runscript))
         if not os.path.exists(runscript):
-            raise FileExistsError("File {} does not exist.".format(runscript))
+            raise FileExistsError(f"File {runscript} does not exist.")
         if not os.access(runscript, os.X_OK):
             raise PermissionError(
-                "File {} does not have execution permissions.".format(runscript)
+                f"File {runscript} does not have execution permissions."
             )
         return runscript
 
