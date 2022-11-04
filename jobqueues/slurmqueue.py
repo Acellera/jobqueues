@@ -322,7 +322,7 @@ class SlurmQueue(SimQueue):
             if self.gpumemory is not None:
                 gpustring += f",gpu_mem:{self.gpumemory}"
 
-        prerun = self.prerun if self.prerun is not None else []
+        prerun = self.prerun.copy() if self.prerun is not None else []
         errorstream = self.errorstream
         outputstream = self.outputstream
         if not self.useworkdir:
@@ -379,7 +379,7 @@ class SlurmQueue(SimQueue):
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs, commands=None):
+    def submit(self, dirs, commands=None, _dryrun=False):
         """Submits all directories
 
         Parameters
@@ -405,8 +405,11 @@ class SlurmQueue(SimQueue):
             jobscript = os.path.abspath(os.path.join(d, self.jobscript))
             self._createJobScript(jobscript, d, runscript)
             try:
-                ret = check_output([self._qsubmit, jobscript])
-                logger.debug(ret.decode("ascii"))
+                if _dryrun:
+                    logger.info(f"Dry run. Here it would call submit on {jobscript}")
+                else:
+                    ret = check_output([self._qsubmit, jobscript])
+                    logger.debug(ret.decode("ascii"))
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
