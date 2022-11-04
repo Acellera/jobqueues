@@ -37,7 +37,7 @@ def _getGPUdevices():
         check_output("nvidia-smi -L", shell=True)
         ngpu = check_output("nvidia-smi -L | wc -l", shell=True).decode("ascii")
         devices = range(int(ngpu))
-    except:
+    except Exception:
         raise
     return devices
 

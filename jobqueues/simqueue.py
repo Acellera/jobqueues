@@ -5,6 +5,7 @@
 #
 from abc import ABC, abstractmethod
 from protocolinterface import ProtocolInterface, val
+from jobqueues.util import ensurelist
 import logging
 import enum
 
@@ -107,13 +108,10 @@ class SimQueue(ABC, ProtocolInterface):
         pass
 
     def _submitinit(self, dirs):
-        if isinstance(dirs, str):
-            dirs = [
-                dirs,
-            ]
+        dirs = ensurelist(dirs)
         if self._dirs is None:
             self._dirs = []
-        self._dirs.extend(dirs)
+        self._dirs += dirs
         return dirs
 
     @abstractmethod

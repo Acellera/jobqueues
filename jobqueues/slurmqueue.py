@@ -695,6 +695,69 @@ class _TestSlurmQueue(unittest.TestCase):
                     l1 == l2
                 ), f"Difference found in line {i} of job file: {l1} vs {l2}"
 
+    def test_submit_multi_folder(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sl = SlurmQueue(_findExecutables=False)
+            sl.partition = "jobqueues_test"
+            sl.ngpu = 2
+            sl.gpumemory = 2000
+            sl.exclude = ["node1", "node4"]
+            sl.nodelist = ["node2"]
+            sl.envvars = "TEST=3"
+
+            for i in range(2):
+                subdir = os.path.join(tmpdir, str(i))
+                os.makedirs(subdir, exist_ok=True)
+                with open(os.path.join(subdir, "run.sh"), "w") as f:
+                    f.write("sleep 5")
+                os.chmod(os.path.join(subdir, "run.sh"), 0o700)
+
+                try:
+                    sl.submit(subdir)
+                except Exception as e:
+                    print(e)
+                    pass
+
+                with open(os.path.join(subdir, "job.sh"), "r") as f:
+                    joblines = f.readlines()
+
+                reflines = [
+                    "#!/bin/bash\n",
+                    "#\n",
+                    "#SBATCH --job-name=tmp8dj2zuya_44185\n",
+                    "#SBATCH --partition=jobqueues_test\n",
+                    "#SBATCH --cpus-per-task=1\n",
+                    "#SBATCH --mem=1000\n",
+                    "#SBATCH --priority=None\n",
+                    "#SBATCH -D tmpdir\n",
+                    "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
+                    "#SBATCH --output=slurm.%N.%j.out\n",
+                    "#SBATCH --error=slurm.%N.%j.err\n",
+                    "#SBATCH --export=TEST=3\n",
+                    "#SBATCH --nodelist=node2\n",
+                    "#SBATCH --exclude=node1,node4\n",
+                    "\n",
+                    'trap "touch tmpdir/jobqueues.done" EXIT SIGTERM\n',
+                    "\n",
+                    "cd tmpdir\n",
+                    "\n",
+                    "tmpdir/run.sh\n",
+                    "\n",
+                ]
+                skiplines = [2]
+
+                assert len(joblines) == len(reflines)
+                for i, (l1, l2) in enumerate(zip(reflines, joblines)):
+                    l1 = l1.replace(subdir, "tmpdir")
+                    l2 = l2.replace(subdir, "tmpdir")
+                    if i in skiplines:
+                        continue
+                    assert (
+                        l1 == l2
+                    ), f"Difference found in line {i} of job file: {l1} vs {l2}"
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
