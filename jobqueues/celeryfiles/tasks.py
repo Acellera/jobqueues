@@ -1,6 +1,5 @@
 from celery.exceptions import SoftTimeLimitExceeded
 import psutil
-from celery import task
 from billiard import current_process
 from jobqueues.util import _getVisibleGPUdevices
 
@@ -15,7 +14,6 @@ def kill(proc_pid):
     process.kill()
 
 
-@task
 def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os
@@ -52,7 +50,6 @@ def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
         raise e
 
 
-@task
 def execute_cpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=None):
     import subprocess
     import os

@@ -67,7 +67,7 @@ class CeleryQueue(LocalGPUQueue):
         try:
             from jobqueues.celeryfiles.tasks import execute_gpu_job, execute_cpu_job
 
-            self._submitfunc = {"gpu": execute_gpu_job, "cpu": execute_cpu_job}
+            self._submitfunc = {"gpu": app.task(execute_gpu_job), "cpu": app.task(execute_cpu_job)}
         except Exception as e:
             raise RuntimeError(f"Could not import CeleryQueue task with error {e}")
 
