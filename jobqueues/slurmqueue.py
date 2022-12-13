@@ -258,6 +258,30 @@ class SlurmQueue(SimQueue):
             None,
             val.Number(int, "0POS"),
         )
+        self._arg(
+            "ntasks_per_core",
+            "int",
+            "Number of tasks for each core",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "cpus_per_task",
+            "int",
+            "Number of CPUs per task",
+            None,
+            val.Number(int, "0POS"),
+        )
+        self._arg(
+            "constraint",
+            "str",
+            "Specifies features that a federated cluster must have to have a sibling job submitted to it. "
+            "Slurm will attempt to submit a sibling job to a cluster if it has at least one of the specified features. "
+            "If the '!' option is included, Slurm will attempt to submit a sibling job to a cluster that has none of "
+            "the specified features.",
+            None,
+            val.String(),
+        )
 
         # Load Slurm configuration profile
         loadConfig(self, "slurm", _configfile, _configapp, _logger)
@@ -363,6 +387,9 @@ class SlurmQueue(SimQueue):
             nodes=self.nodes,
             ntasks=self.ntasks,
             ntasks_per_node=self.ntasks_per_node,
+            ntasks_per_core=self.ntasks_per_core,
+            cpus_per_task=self.cpus_per_task,
+            constraint=self.constraint,
         )
         with open(fname, "w") as f:
             f.write(job_str)

@@ -33,6 +33,12 @@
 {% endif %}
 {% if ntasks_per_node is not none %}#SBATCH --ntasks-per-node={{ ntasks_per_node }}
 {% endif %}
+{% if ntasks_per_core is not none %}#SBATCH --ntasks-per-core={{ ntasks_per_core }}
+{% endif %}
+{% if cpus_per_task is not none %}#SBATCH --cpus-per-task={{ cpus_per_task }}
+{% endif %}
+{% if constraint is not none %}#SBATCH --constraint={{ constraint }}
+{% endif %}
 
 {% if sentinel is not none %}trap "touch {{ sentinel }}" EXIT SIGTERM
 {% endif %}
