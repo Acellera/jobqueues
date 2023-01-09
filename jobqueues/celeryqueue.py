@@ -133,11 +133,34 @@ class CeleryQueue(LocalGPUQueue):
             tasks += reserved[worker]
         return tasks
 
+    def _get_rabbit_queue_tasks(self, queue_name):
+        import ast
+
+        connection = self._app.connection()
+        try:
+            channel = connection.channel()
+            _, njobs, _ = channel.queue_declare(queue=queue_name, passive=True)
+            active_jobs = []
+
+            def dump_message(message):
+                active_jobs.append({"kwargs": ast.literal_eval(message.properties["application_headers"]["kwargsrepr"])})
+
+            channel.basic_consume(queue=queue_name, callback=dump_message)
+
+            for _ in range(njobs):
+                connection.drain_events()
+
+            return active_jobs
+        finally:
+            connection.close()
+
     def inprogress(self):
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
 
         tasks = self._getTasks()
+        tasks += self._get_rabbit_queue_tasks("cpu")
+        tasks += self._get_rabbit_queue_tasks("gpu")
 
         inprog = 0
         for task in tasks:
