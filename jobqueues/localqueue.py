@@ -12,7 +12,7 @@ import threading
 from subprocess import check_output
 from abc import abstractmethod
 import logging
-import psutil
+
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +216,8 @@ class _LocalQueue(SimQueue):
         return list()
 
     def _getmemory(self):
+        import psutil
+
         total_memory = int(psutil.virtual_memory().total >> 20)  # Converts bytes to MiB
         nr_devices = len(self._getdevices(_logger=False))
         if nr_devices != 0:
@@ -381,6 +383,8 @@ class LocalCPUQueue(_LocalQueue):
     """
 
     def __init__(self):
+        import psutil
+
         super().__init__()
         self._arg(
             "ncpu",
@@ -406,6 +410,8 @@ class LocalCPUQueue(_LocalQueue):
         )
 
     def _getdevices(self):
+        import psutil
+
         if self.ncpu > self.maxcpu:
             raise ValueError(
                 "The ncpu ({}) cannot be greater than the maxcpu ({})".format(
@@ -425,6 +431,7 @@ class LocalCPUQueue(_LocalQueue):
 
     def _getmemory(self):
         from math import floor
+        import psutil
 
         memory = psutil.virtual_memory().total / 1024 ** 2
         memory *= max(0, min(1, self.ncpu / psutil.cpu_count()))  # Clamp to [0, 1]

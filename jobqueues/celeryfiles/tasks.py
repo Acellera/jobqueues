@@ -1,5 +1,4 @@
 from celery.exceptions import SoftTimeLimitExceeded
-import psutil
 from billiard import current_process
 from jobqueues.util import _getVisibleGPUdevices
 
@@ -8,6 +7,8 @@ visibledevs = _getVisibleGPUdevices()
 
 
 def kill(proc_pid):
+    import psutil
+
     process = psutil.Process(proc_pid)
     for proc in process.children(recursive=True):
         proc.kill()
