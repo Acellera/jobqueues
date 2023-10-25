@@ -48,14 +48,15 @@ jobs:
           export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
           sed -i "s/__version__ = \"unpackaged\"/__version__ = \"$BUILD_VERSION\"/" jobqueues/__init__.py
 
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: stefdoerr
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      - name: Build PyPI 📦
         run: |
           python setup.py sdist bdist_wheel
-          twine upload dist/*
-        continue-on-error: true
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
+          skip_existing: true
 
       - name: Build and publish conda package
         run: |
