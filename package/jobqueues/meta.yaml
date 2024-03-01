@@ -6,7 +6,8 @@ source:
    path: ../..
 
 build:
-  number: {{ environ.get('BUILD_NUMBER', 0 ) }}
+  script:
+    - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
   host:

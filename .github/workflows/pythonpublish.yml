@@ -42,15 +42,10 @@ jobs:
           coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
           codecov
 
-      - name: Set version in __init__.py
-        run: |
-          export TAG_DESCRIBE=$(git describe)
-          export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
-          sed -i "s/__version__ = \"unpackaged\"/__version__ = \"$BUILD_VERSION\"/" jobqueues/__init__.py
-
       - name: Build PyPI 📦
         run: |
-          python setup.py sdist bdist_wheel
+          pip install build twine versioneer==0.28 
+          python -m build
 
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@master
@@ -60,9 +55,6 @@ jobs:
 
       - name: Build and publish conda package
         run: |
-          export TAG_DESCRIBE=$(git describe)
-          export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
-          export BUILD_NUMBER=0
           $CONDA/bin/conda install anaconda-client conda-build -y -q
           $CONDA/bin/conda build --python ${{ matrix.python-version }} --no-include-recipe package/jobqueues -c acellera
           $CONDA/bin/anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera $CONDA/conda-bld/linux-64/jobqueues-*.tar.bz2

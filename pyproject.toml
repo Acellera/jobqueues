@@ -1,0 +1,33 @@
+[project]
+name = "jobqueues"
+description = "Wrappers for various queueing systems in python"
+authors = [{ name = "Acellera", email = "info@acellera.com" }]
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
+]
+dependencies = ["protocolinterface", "psutil", "pyyaml", "jinja2"]
+
+[project.urls]
+"Homepage" = "https://github.com/Acellera/jobqueues"
+"Bug Tracker" = "https://github.com/Acellera/jobqueues/issues"
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["jobqueues*"]
+namespaces = false
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "jobqueues/_version.py"
+versionfile_build = "jobqueues/_version.py"
+tag_prefix = ""
+parentdir_prefix = "jobqueues-"
+
+[build-system]
+requires = ["setuptools", "toml", "versioneer[toml]==0.28"]
+build-backend = "setuptools.build_meta"
