@@ -372,12 +372,14 @@ class SlurmQueue(SimQueue):
             time=self.walltime,
             mailtype=self.mailtype,
             mailuser=self.mailuser,
-            nodelist=",".join(ensurelist(self.nodelist))
-            if self.nodelist is not None
-            else None,
-            exclude=",".join(ensurelist(self.exclude))
-            if self.exclude is not None
-            else None,
+            nodelist=(
+                ",".join(ensurelist(self.nodelist))
+                if self.nodelist is not None
+                else None
+            ),
+            exclude=(
+                ",".join(ensurelist(self.exclude)) if self.exclude is not None else None
+            ),
             account=self.account,
             sentinel=sentinel,
             prerun=prerun,
@@ -690,6 +692,8 @@ class _TestSlurmQueue(unittest.TestCase):
             with open(os.path.join(tmpdir, "job.sh"), "r") as f:
                 joblines = f.readlines()
 
+            donefile = os.path.join("tmpdir", "jobqueues.done")
+            runfile = os.path.join("tmpdir", "run.sh")
             reflines = [
                 "#!/bin/bash\n",
                 "#\n",
@@ -706,11 +710,11 @@ class _TestSlurmQueue(unittest.TestCase):
                 "#SBATCH --nodelist=node2\n",
                 "#SBATCH --exclude=node1,node4\n",
                 "\n",
-                'trap "touch tmpdir/jobqueues.done" EXIT SIGTERM\n',
+                f'trap "touch {donefile}" EXIT SIGTERM\n',
                 "\n",
                 "cd tmpdir\n",
                 "\n",
-                "tmpdir/run.sh\n",
+                f"{runfile}\n",
                 "\n",
             ]
             skiplines = [2]
@@ -753,6 +757,8 @@ class _TestSlurmQueue(unittest.TestCase):
                 with open(os.path.join(subdir, "job.sh"), "r") as f:
                     joblines = f.readlines()
 
+                donefile = os.path.join("tmpdir", "jobqueues.done")
+                runfile = os.path.join("tmpdir", "run.sh")
                 reflines = [
                     "#!/bin/bash\n",
                     "#\n",
@@ -769,11 +775,11 @@ class _TestSlurmQueue(unittest.TestCase):
                     "#SBATCH --nodelist=node2\n",
                     "#SBATCH --exclude=node1,node4\n",
                     "\n",
-                    'trap "touch tmpdir/jobqueues.done" EXIT SIGTERM\n',
+                    f'trap "touch {donefile}" EXIT SIGTERM\n',
                     "\n",
                     "cd tmpdir\n",
                     "\n",
-                    "tmpdir/run.sh\n",
+                    f"{runfile}\n",
                     "\n",
                 ]
                 skiplines = [2]
