@@ -1,4 +1,3 @@
-import toml
 import traceback
 import versioneer
 
@@ -15,6 +14,8 @@ with open("package/jobqueues/meta.yaml", "r") as f:
     text = f.read()
 
 text = text.replace("BUILD_VERSION_PLACEHOLDER", __version__)
+
+# import toml
 
 # pyproject = toml.load("pyproject.toml")
 # deps = pyproject["project"]["dependencies"]
