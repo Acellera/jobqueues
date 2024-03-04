@@ -1,9 +1,9 @@
 package:
   name: jobqueues
-  version: {{ environ.get('BUILD_VERSION', 0 ) }}
+  version: BUILD_VERSION_PLACEHOLDER
 
 source:
-   path: ../..
+  path: ../..
 
 build:
   script:
@@ -16,7 +16,7 @@ requirements:
     - psutil
     - pyyaml
     - jinja2
-    - versioneer==0.28 
+    - versioneer==0.28
 
   run:
     - python
@@ -25,14 +25,13 @@ requirements:
     - pyyaml
     - jinja2
 
-
 about:
   home: https://github.com/acellera/jobqueues/
   license: "HTMD Software License version 1.1"
   license_file: HTMD_LICENCE.txt
   summary: Unified interface for interacting with queueing systems.
-  doc_url: 
-  dev_url: 
+  doc_url:
+  dev_url:
 
 extra:
   recipe-maintainers:
