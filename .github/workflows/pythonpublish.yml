@@ -55,7 +55,6 @@ jobs:
 
       - name: Build and publish conda package
         run: |
-          $CONDA/bin/pip install versioneer==0.28
           $CONDA/bin/conda install anaconda-client conda-build -y -q
           $CONDA/bin/conda build --python ${{ matrix.python-version }} --no-include-recipe package/jobqueues -c acellera
           $CONDA/bin/anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera $CONDA/conda-bld/linux-64/jobqueues-*.tar.bz2

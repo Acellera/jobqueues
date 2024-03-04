@@ -16,6 +16,7 @@ requirements:
     - psutil
     - pyyaml
     - jinja2
+    - versioneer==0.28 
 
   run:
     - python
