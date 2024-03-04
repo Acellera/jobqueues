@@ -46,7 +46,6 @@ jobs:
           pip install .
           pip install -q codecov coverage pytest
           coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
-          codecov
 
       - name: Build PyPI 📦
         run: |
@@ -63,5 +62,6 @@ jobs:
       - name: Build and publish conda package
         run: |
           conda install anaconda-client conda-build -y -q
+          python package/jobqueues/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload package/jobqueues -c acellera
           anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/jobqueues-*.tar.bz2
