@@ -52,6 +52,7 @@ jobs:
           pip install .
           pip install -q codecov coverage pytest
           coverage run -m pytest ./jobqueues/ --ignore=jobqueues/celeryfiles/
+          pytest ./tests
 
       - name: Build PyPI 📦
         run: |
