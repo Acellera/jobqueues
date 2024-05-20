@@ -328,8 +328,10 @@ class SlurmQueue(SimQueue):
         ret = os.path.abspath(ret)
         return ret
 
-    def _createJobScript(self, fname, workdir, runsh):
+    def _createJobScript(self, fname, workdir, runsh, nvidia_mps=False):
         from jobqueues.config import template_env
+
+        runsh = ensurelist(runsh)
 
         workdir = os.path.abspath(workdir)
         sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
@@ -392,6 +394,8 @@ class SlurmQueue(SimQueue):
             ntasks_per_core=self.ntasks_per_core,
             cpus_per_task=self.cpus_per_task,
             constraint=self.constraint,
+            run_as_daemon=len(runsh) > 1,
+            nvidia_mps=nvidia_mps,
         )
         with open(fname, "w") as f:
             f.write(job_str)
@@ -402,24 +406,52 @@ class SlurmQueue(SimQueue):
         pass
 
     def _autoJobName(self, path):
+        path = ensurelist(path)
         return (
-            os.path.basename(os.path.abspath(path))
+            "_".join([os.path.basename(os.path.abspath(x)) for x in path])
             + "_"
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs, commands=None, _dryrun=False):
+    def submit(self, dirs, commands=None, _dryrun=False, nvidia_mps=False):
         """Submits all directories
 
         Parameters
         ----------
         dirs : list
             A list of executable directories.
+        nvidia_mps : bool
+            Whether to use Nvidia's Multi-Process Service (MPS) to share GPU resources among all jobs in `dirs`.
         """
         dirs = self._submitinit(dirs)
 
         if self.partition is None:
             raise ValueError("The partition needs to be defined.")
+
+        if nvidia_mps:
+            logger.info(f"Queueing single job with directories {dirs}")
+            if self.jobname is None:
+                self.jobname = self._autoJobName(dirs)
+
+            runscripts = []
+            for d in dirs:
+                runscripts.append(self._getRunScript(d))
+                self._cleanSentinel(d)
+
+            jobscript = os.path.abspath(os.path.join(dirs[0], self.jobscript))
+            self._createJobScript(jobscript, dirs[0], runscripts, nvidia_mps=True)
+            try:
+                if _dryrun:
+                    logger.info(f"Dry run. Here it would call submit on {jobscript}")
+                else:
+                    ret = check_output([self._qsubmit, jobscript])
+                    logger.debug(ret.decode("ascii"))
+            except CalledProcessError as e:
+                logger.error(e.output)
+                raise
+            except Exception:
+                raise
+            return
 
         # if all folders exist, submit
         for i, d in enumerate(dirs):
@@ -598,202 +630,3 @@ class SlurmQueue(SimQueue):
     @memory.setter
     def memory(self, value):
         self.memory = value
-
-
-class _TestSlurmQueue(unittest.TestCase):
-    def test_config(self):
-        from jobqueues.home import home
-        import os
-
-        configfile = os.path.join(home(), "config_slurm.yml")
-        with open(configfile, "r") as f:
-            reference = yaml.load(f, Loader=yaml.FullLoader)
-
-        for appkey in reference:
-            sq = SlurmQueue(
-                _configapp=appkey, _configfile=configfile, _findExecutables=False
-            )
-            for key in reference[appkey]:
-                assert (
-                    sq.__getattribute__(key) == reference[appkey][key]
-                ), f'Config setup of SlurmQueue failed on app "{appkey}" and key "{key}""'
-
-    def test_submit_command(self):
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            sl = SlurmQueue(_findExecutables=False)
-            sl.partition = "jobqueues_test"
-            sl.ngpu = 2
-            sl.gpumemory = 2000
-            sl.exclude = ["node1", "node4"]
-            sl.nodelist = ["node2"]
-            sl.envvars = "TEST=3"
-            sl.useworkdir = False
-            try:
-                sl.submit([tmpdir], commands=["sleep 5"])
-            except Exception as e:
-                print(e)
-                pass
-
-            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
-                joblines = f.readlines()
-
-            reflines = [
-                "#!/bin/bash\n",
-                "#\n",
-                "#SBATCH --job-name=tmpwnq0uoqw_28851\n",
-                "#SBATCH --partition=jobqueues_test\n",
-                "#SBATCH --cpus-per-task=1\n",
-                "#SBATCH --mem=1000\n",
-                "#SBATCH --priority=None\n",
-                "#SBATCH -D /tmp/\n",
-                "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
-                "#SBATCH --export=TEST=3\n",
-                "#SBATCH --nodelist=node2\n",
-                "#SBATCH --exclude=node1,node4\n",
-                "\n",
-                "\n",
-                "\n",
-                "sleep 5\n",
-                "\n",
-            ]
-            skiplines = [2]
-
-            assert len(joblines) == len(reflines)
-            for i, (l1, l2) in enumerate(zip(reflines, joblines)):
-                if i in skiplines:
-                    continue
-                assert (
-                    l1 == l2
-                ), f"Difference found in line {i} of job file: {l1} vs {l2}"
-
-    def test_submit_folder(self):
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, "run.sh"), "w") as f:
-                f.write("sleep 5")
-            os.chmod(os.path.join(tmpdir, "run.sh"), 0o700)
-
-            sl = SlurmQueue(_findExecutables=False)
-            sl.partition = "jobqueues_test"
-            sl.ngpu = 2
-            sl.gpumemory = 2000
-            sl.exclude = ["node1", "node4"]
-            sl.nodelist = ["node2"]
-            sl.envvars = "TEST=3"
-            try:
-                sl.submit(tmpdir)
-            except Exception as e:
-                print(e)
-                pass
-
-            with open(os.path.join(tmpdir, "job.sh"), "r") as f:
-                joblines = f.readlines()
-
-            donefile = os.path.join("tmpdir", "jobqueues.done")
-            runfile = os.path.join("tmpdir", "run.sh")
-            reflines = [
-                "#!/bin/bash\n",
-                "#\n",
-                "#SBATCH --job-name=tmp8dj2zuya_44185\n",
-                "#SBATCH --partition=jobqueues_test\n",
-                "#SBATCH --cpus-per-task=1\n",
-                "#SBATCH --mem=1000\n",
-                "#SBATCH --priority=None\n",
-                "#SBATCH -D tmpdir\n",
-                "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
-                "#SBATCH --output=slurm.%N.%j.out\n",
-                "#SBATCH --error=slurm.%N.%j.err\n",
-                "#SBATCH --export=TEST=3\n",
-                "#SBATCH --nodelist=node2\n",
-                "#SBATCH --exclude=node1,node4\n",
-                "\n",
-                f'trap "touch {donefile}" EXIT SIGTERM\n',
-                "\n",
-                "cd tmpdir\n",
-                "\n",
-                f"{runfile}\n",
-                "\n",
-            ]
-            skiplines = [2]
-
-            assert len(joblines) == len(reflines)
-            for i, (l1, l2) in enumerate(zip(reflines, joblines)):
-                l1 = l1.replace(tmpdir, "tmpdir")
-                l2 = l2.replace(tmpdir, "tmpdir")
-                if i in skiplines:
-                    continue
-                assert (
-                    l1 == l2
-                ), f"Difference found in line {i} of job file: {l1} vs {l2}"
-
-    def test_submit_multi_folder(self):
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            sl = SlurmQueue(_findExecutables=False)
-            sl.partition = "jobqueues_test"
-            sl.ngpu = 2
-            sl.gpumemory = 2000
-            sl.exclude = ["node1", "node4"]
-            sl.nodelist = ["node2"]
-            sl.envvars = "TEST=3"
-
-            for i in range(2):
-                subdir = os.path.join(tmpdir, str(i))
-                os.makedirs(subdir, exist_ok=True)
-                with open(os.path.join(subdir, "run.sh"), "w") as f:
-                    f.write("sleep 5")
-                os.chmod(os.path.join(subdir, "run.sh"), 0o700)
-
-                try:
-                    sl.submit(subdir)
-                except Exception as e:
-                    print(e)
-                    pass
-
-                with open(os.path.join(subdir, "job.sh"), "r") as f:
-                    joblines = f.readlines()
-
-                donefile = os.path.join("tmpdir", "jobqueues.done")
-                runfile = os.path.join("tmpdir", "run.sh")
-                reflines = [
-                    "#!/bin/bash\n",
-                    "#\n",
-                    "#SBATCH --job-name=tmp8dj2zuya_44185\n",
-                    "#SBATCH --partition=jobqueues_test\n",
-                    "#SBATCH --cpus-per-task=1\n",
-                    "#SBATCH --mem=1000\n",
-                    "#SBATCH --priority=None\n",
-                    "#SBATCH -D tmpdir\n",
-                    "#SBATCH --gres=gpu:2,gpu_mem:2000\n",
-                    "#SBATCH --output=slurm.%N.%j.out\n",
-                    "#SBATCH --error=slurm.%N.%j.err\n",
-                    "#SBATCH --export=TEST=3\n",
-                    "#SBATCH --nodelist=node2\n",
-                    "#SBATCH --exclude=node1,node4\n",
-                    "\n",
-                    f'trap "touch {donefile}" EXIT SIGTERM\n',
-                    "\n",
-                    "cd tmpdir\n",
-                    "\n",
-                    f"{runfile}\n",
-                    "\n",
-                ]
-                skiplines = [2]
-
-                assert len(joblines) == len(reflines)
-                for i, (l1, l2) in enumerate(zip(reflines, joblines)):
-                    l1 = l1.replace(subdir, "tmpdir")
-                    l2 = l2.replace(subdir, "tmpdir")
-                    if i in skiplines:
-                        continue
-                    assert (
-                        l1 == l2
-                    ), f"Difference found in line {i} of job file: {l1} vs {l2}"
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)

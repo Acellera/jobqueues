@@ -47,7 +47,41 @@
 {{ cmd }}
 {% endfor %}
 
-{{ runsh }}
+{% if nvidia_mps %}
+# assume CUDA_VISIBLE_DEVICES has been set by slurm
+GPU=$CUDA_VISIBLE_DEVICES
+
+echo "hostname: $(hostname)  GPU: $GPU"
+
+# the CUDA_MPS_PIPE_DIRECTORY is how a program connects to the mps-control and the mps-server
+# we can use a unique one for each job
+export CUDA_MPS_PIPE_DIRECTORY=~/.nvidia-mps_$(hostname)_gpu_${GPU}
+export CUDA_MPS_LOG_DIRECTORY=~/.nvidia-mps-logs_$(hostname)_gpu_${GPU}
+echo $CUDA_MPS_PIPE_DIRECTORY
+echo $CUDA_MPS_LOG_DIRECTORY
+
+# start the control demon
+nvidia-cuda-mps-control -d
+
+# start the server
+echo "start_server -uid ${UID}" | nvidia-cuda-mps-control
+
+# mps-control remaps the index of the device it is running on to 0 so we 
+# need to unset it to avoid "cuda_error_no_device"
+
+unset CUDA_VISIBLE_DEVICES
+{% endif %}
+
+{% for rsh in runsh %}
+{{ rsh }} {% if run_as_daemon %} | tee log_{{loop.index}}.txt &{% endif %}
+
+{% endfor %}
+
+{% if nvidia_mps %}
+wait
+# quit the server and the control. It will only quit the one corresponding to the CUDA_MPS_PIPE_DIRECTORY env variable
+echo quit | nvidia-cuda-mps-control
+{% endif %}
 
 {% if odir is not none %}
 mkdir -p {{ odir }}
