@@ -41,7 +41,7 @@ def _compare_jobsh(jobsh, expected, datadir):
         jobsh = re.sub(
             r"#SBATCH --job-name=\w+\n", "#SBATCH --job-name=XXXXX\n", jobsh
         ).strip()
-        jobsh.replace("\\", "/")
+        jobsh = jobsh.replace("\\", "/")
 
     assert jobsh == expected
 
