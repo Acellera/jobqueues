@@ -15,8 +15,8 @@
 
 trap "touch TESTDIR_PLACEHOLDER/jobqueues.done" EXIT SIGTERM
 
+
+
 cd TESTDIR_PLACEHOLDER
-
-
 TESTDIR_PLACEHOLDER/run.sh
 

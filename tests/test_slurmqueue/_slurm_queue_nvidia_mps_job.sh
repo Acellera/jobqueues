@@ -13,7 +13,6 @@
 
 trap "touch TESTDIR_PLACEHOLDER/0/jobqueues.done" EXIT SIGTERM
 
-cd TESTDIR_PLACEHOLDER/0
 
 # assume CUDA_VISIBLE_DEVICES has been set by slurm
 GPU=$CUDA_VISIBLE_DEVICES
@@ -38,9 +37,13 @@ echo "start_server -uid ${UID}" | nvidia-cuda-mps-control
 
 unset CUDA_VISIBLE_DEVICES
 
+cd TESTDIR_PLACEHOLDER/0
 TESTDIR_PLACEHOLDER/0/run.sh  | tee log_1.txt &
+cd TESTDIR_PLACEHOLDER/1
 TESTDIR_PLACEHOLDER/1/run.sh  | tee log_2.txt &
+cd TESTDIR_PLACEHOLDER/2
 TESTDIR_PLACEHOLDER/2/run.sh  | tee log_3.txt &
+cd TESTDIR_PLACEHOLDER/0
 
 wait
 # quit the server and the control. It will only quit the one corresponding to the CUDA_MPS_PIPE_DIRECTORY env variable

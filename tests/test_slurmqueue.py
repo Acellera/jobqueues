@@ -65,7 +65,8 @@ def _test_config(datadir):
 
 
 def _test_submit_command(datadir):
-    import tempfile
+    execdir = str(datadir.join("0"))
+    os.makedirs(execdir, exist_ok=True)
 
     sl = SlurmQueue(_findExecutables=False)
     sl.partition = "jobqueues_test"
@@ -76,16 +77,11 @@ def _test_submit_command(datadir):
     sl.envvars = "TEST=3"
     sl.useworkdir = False
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        try:
-            sl.submit([tmpdir], commands=["sleep 5"])
-        except Exception as e:
-            print(e)
-            pass
+    sl.submit([execdir], commands=["sleep 5"], _dryrun=True)
 
-        _compare_jobsh(
-            os.path.join(tmpdir, "job.sh"), datadir.join("_submit_command.sh"), tmpdir
-        )
+    _compare_jobsh(
+        os.path.join(execdir, "job.sh"), datadir.join("_submit_command.sh"), datadir
+    )
 
 
 def _test_submit_folder(datadir):

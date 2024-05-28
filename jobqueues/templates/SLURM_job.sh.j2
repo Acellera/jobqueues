@@ -73,9 +73,13 @@ unset CUDA_VISIBLE_DEVICES
 {% endif %}
 
 {% for rsh in runsh %}
-{{ rsh }} {% if run_as_daemon %} | tee log_{{loop.index}}.txt &{% endif %}
+cd {{ rsh[0] }}
+{{ rsh[1] }} {% if run_as_daemon %} | tee log_{{loop.index}}.txt &{% endif %}
 
 {% endfor %}
+{% if runsh|length > 1 %}
+cd {{ workdir }}
+{% endif %}
 
 {% if nvidia_mps %}
 wait

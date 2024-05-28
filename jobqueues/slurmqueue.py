@@ -328,10 +328,15 @@ class SlurmQueue(SimQueue):
         ret = os.path.abspath(ret)
         return ret
 
-    def _createJobScript(self, fname, workdir, runsh, nvidia_mps=False):
+    def _createJobScript(self, fname, workdir, runsh, nvidia_mps=False, commands=None):
         from jobqueues.config import template_env
 
+        # Create a list of lists with the directory of the run.sh and the run.sh itself
         runsh = ensurelist(runsh)
+        if commands is None:
+            runsh = [[os.path.dirname(os.path.abspath(x)), x] for x in runsh]
+        else:
+            runsh = [[workdir, runsh[0]]]
 
         workdir = os.path.abspath(workdir)
         sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
@@ -356,8 +361,6 @@ class SlurmQueue(SimQueue):
             errorstream = None
             outputstream = None
             sentinel = None
-        else:
-            prerun += [f"cd {workdir}"]
 
         template = template_env.get_template("SLURM_job.sh.j2")
         job_str = template.render(
@@ -464,7 +467,7 @@ class SlurmQueue(SimQueue):
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, self.jobscript))
-            self._createJobScript(jobscript, d, runscript)
+            self._createJobScript(jobscript, d, runscript, commands=commands)
             try:
                 if _dryrun:
                     logger.info(f"Dry run. Here it would call submit on {jobscript}")

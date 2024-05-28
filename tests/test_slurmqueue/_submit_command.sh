@@ -14,4 +14,5 @@
 
 
 
+cd TESTDIR_PLACEHOLDER/0
 sleep 5
