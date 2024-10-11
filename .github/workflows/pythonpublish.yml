@@ -64,7 +64,7 @@ jobs:
           python package/jobqueues/insert_placeholder_values.py
 
       - name: Build conda package
-        run: rattler-build build --recipe ./package/jobqueues/recipe.yaml --output-dir /tmp/pkg/
+        run: rattler-build build --recipe ./package/jobqueues/recipe.yaml --output-dir /tmp/pkg/ -c acellera -c conda-forge
 
       - name: Upload to conda
         run: |
