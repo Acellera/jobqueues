@@ -10,7 +10,7 @@ except Exception:
 
 
 # Fix conda meta.yaml
-with open("package/jobqueues/meta.yaml", "r") as f:
+with open("package/jobqueues/recipe_template.yaml", "r") as f:
     text = f.read()
 
 text = text.replace("BUILD_VERSION_PLACEHOLDER", __version__)
@@ -25,5 +25,5 @@ text = text.replace("BUILD_VERSION_PLACEHOLDER", __version__)
 #     "".join(["    - {}\n".format(dep.strip()) for dep in deps]),
 # )
 
-with open("package/jobqueues/meta.yaml", "w") as f:
+with open("package/jobqueues/recipe.yaml", "w") as f:
     f.write(text)

@@ -12,14 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          [
-            "ubuntu-latest",
-            "macos-latest",
-            "macos-latest-large",
-            "windows-latest",
-          ]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        os: ["ubuntu-latest"]
+        python-version: ["3.11"]
 
     defaults: # Needed for conda
       run:
@@ -32,7 +26,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           mamba-version: "*"
-          miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
       - name: Install dependencies
@@ -60,15 +53,19 @@ jobs:
           python -m build
 
       - name: Publish distribution 📦 to PyPI
-        if: (matrix.os == 'ubuntu-latest') && (matrix.python-version == '3.10')
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
           skip_existing: true
 
       - name: Build and publish conda package
         run: |
-          conda install anaconda-client conda-build -y -q
+          mamba install anaconda-client rattler-build -y -q
           python package/jobqueues/insert_placeholder_values.py
-          conda build --python ${{ matrix.python-version }} --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload package/jobqueues -c acellera
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/jobqueues-*.tar.bz2
+
+      - name: Build conda package
+        run: rattler-build build --recipe ./package/jobqueues/recipe.yaml --output-dir /tmp/pkg/
+
+      - name: Upload to conda
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera /tmp/pkg/noarch/jobqueues-*.conda
