@@ -598,6 +598,8 @@ class SlurmQueue(SimQueue):
 
             if state in JOB_STATE_CODES:
                 state = JOB_STATE_CODES[state]
+            elif state.startswith("CANCELLED by"):
+                state = QueueJobStatus.CANCELLED
             else:
                 raise RuntimeError(f'Unknown SLURM job state "{state}"')
 

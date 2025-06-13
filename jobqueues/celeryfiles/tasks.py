@@ -91,6 +91,12 @@ def _createJobScript(
         )
         f.write("\n")
         if deviceid is not None:
+            visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+            if visible_devices is not None:
+                visible_devices = [int(d) for d in visible_devices.split(",")]
+                if deviceid >= len(visible_devices):
+                    deviceid = deviceid % len(visible_devices)
+                deviceid = visible_devices[deviceid]
             f.write(f"export CUDA_VISIBLE_DEVICES={deviceid}\n\n")
 
         f.write(f"cd {os.path.abspath(workdir)}\n")
