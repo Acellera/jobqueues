@@ -28,9 +28,7 @@ def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
 
     jobsh = os.path.join(folder, "job.sh")
     stdfile = os.path.join(folder, "celery.out")
-    _createJobScript(
-        jobsh, folder, runsh, worker_index, sentinel, datadir, copyextensions
-    )
+    _createJobScript(jobsh, folder, runsh, gpu_index, sentinel, datadir, copyextensions)
 
     # Sleep for a short bit so that the OS can pick up on the new file before executing it
     time.sleep(0.2)
@@ -91,12 +89,6 @@ def _createJobScript(
         )
         f.write("\n")
         if deviceid is not None:
-            visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if visible_devices is not None:
-                visible_devices = [int(d) for d in visible_devices.split(",")]
-                if deviceid >= len(visible_devices):
-                    deviceid = deviceid % len(visible_devices)
-                deviceid = visible_devices[deviceid]
             f.write(f"export CUDA_VISIBLE_DEVICES={deviceid}\n\n")
 
         f.write(f"cd {os.path.abspath(workdir)}\n")
