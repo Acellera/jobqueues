@@ -416,17 +416,38 @@ class SlurmQueue(SimQueue):
             + "".join([random.choice(string.digits) for _ in range(5)])
         )
 
-    def submit(self, dirs, commands=None, _dryrun=False, nvidia_mps=False):
+    def submit(
+        self, dirs, commands=None, runscripts=None, _dryrun=False, nvidia_mps=False
+    ):
         """Submits all directories
 
         Parameters
         ----------
         dirs : list
-            A list of executable directories.
+            A list of executable directories. By default it will search for the run.sh script
+            in each directory. You can override the script name by setting the `runscript` parameter.
+        commands : list
+            A list of commands to run in each directory. If not provided, the run.sh script will be executed.
+            The length of `commands` must be the same as the length of `dirs`.
+        runscripts : list
+            A list of run scripts to run in each directory. If not provided, the run.sh script will be detected and executed.
+            This can be used if each folder contains a differently named run script. The length of `runscripts`
+            must be the same as the length of `dirs`.
         nvidia_mps : bool
             Whether to use Nvidia's Multi-Process Service (MPS) to share GPU resources among all jobs in `dirs`.
         """
         dirs = self._submitinit(dirs)
+
+        if commands is not None:
+            if len(commands) != len(dirs):
+                raise ValueError(
+                    f"The length of `commands` must be the same as the length of `dirs`. Got {len(commands)} and {len(dirs)}."
+                )
+        if runscripts is not None:
+            if len(runscripts) != len(dirs):
+                raise ValueError(
+                    f"The length of `runscripts` must be the same as the length of `dirs`. Got {len(runscripts)} and {len(dirs)}."
+                )
 
         if self.partition is None:
             raise ValueError("The partition needs to be defined.")
@@ -436,9 +457,12 @@ class SlurmQueue(SimQueue):
             if self.jobname is None:
                 self.jobname = self._autoJobName(dirs)
 
-            runscripts = []
+            if runscripts is None:
+                runscripts = [self._getRunScript(d) for d in dirs]
+            else:
+                runscripts = [os.path.join(d, r) for d, r in zip(dirs, runscripts)]
+
             for d in dirs:
-                runscripts.append(self._getRunScript(d))
                 self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(dirs[0], self.jobscript))
@@ -463,7 +487,14 @@ class SlurmQueue(SimQueue):
             if self.jobname is None:
                 self.jobname = self._autoJobName(d)
 
-            runscript = commands[i] if commands is not None else self._getRunScript(d)
+            runscript = None
+            if commands is not None:
+                runscript = commands[i]
+            elif runscripts is not None:
+                runscript = os.path.join(d, runscripts[i])
+            else:
+                runscript = self._getRunScript(d)
+
             self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(d, self.jobscript))

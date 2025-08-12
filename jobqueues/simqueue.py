@@ -108,7 +108,9 @@ class SimQueue(ABC, ProtocolInterface):
         pass
 
     def _submitinit(self, dirs):
-        dirs = ensurelist(dirs)
+        import os
+
+        dirs = [os.path.abspath(d) for d in ensurelist(dirs)]
         if self._dirs is None:
             self._dirs = []
         self._dirs += dirs

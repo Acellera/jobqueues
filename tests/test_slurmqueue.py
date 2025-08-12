@@ -22,9 +22,9 @@ def datadir(tmpdir, request):
     return tmpdir
 
 
-def _create_execdir(tmpdir):
+def _create_execdir(tmpdir, runscript="run.sh"):
     os.makedirs(tmpdir)
-    run_sh = os.path.join(tmpdir, "run.sh")
+    run_sh = os.path.join(tmpdir, runscript)
     with open(run_sh, "w") as f:
         f.write("sleep 5\n")
     os.chmod(run_sh, 0o700)
@@ -136,5 +136,31 @@ def _test_nvidia_mps(datadir):
     _compare_jobsh(
         os.path.join(execdirs[0], "job.sh"),
         datadir.join("_slurm_queue_nvidia_mps_job.sh"),
+        datadir,
+    )
+
+
+def _test_nvidia_mps_runscript(datadir):
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "test"
+
+    execdirs = [
+        _create_execdir(os.path.join(datadir, str(i)), runscript=f"run{i}.sh")
+        for i in range(3)
+    ]
+    sl.submit(
+        execdirs,
+        runscripts=["run0.sh", "run1.sh", "run2.sh"],
+        nvidia_mps=True,
+        _dryrun=True,
+    )
+
+    assert os.path.exists(os.path.join(execdirs[0], "job.sh"))
+    for i in range(1, 3):
+        assert not os.path.exists(os.path.join(execdirs[i], "job.sh"))
+
+    _compare_jobsh(
+        os.path.join(execdirs[0], "job.sh"),
+        datadir.join("_slurm_queue_nvidia_mps_job_runscripts.sh"),
         datadir,
     )
