@@ -32,11 +32,6 @@ nvidia-cuda-mps-control -d
 # start the server
 echo "start_server -uid ${UID}" | nvidia-cuda-mps-control
 
-# mps-control remaps the index of the device it is running on to 0 so we 
-# need to unset it to avoid "cuda_error_no_device"
-
-unset CUDA_VISIBLE_DEVICES
-
 cd TESTDIR_PLACEHOLDER/0
 TESTDIR_PLACEHOLDER/0/run.sh  | tee log_1.txt &
 cd TESTDIR_PLACEHOLDER/1
