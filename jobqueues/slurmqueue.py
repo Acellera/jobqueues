@@ -8,11 +8,13 @@ import shutil
 import random
 import string
 from jobqueues.config import loadConfig
+import yaml
 from subprocess import check_output, CalledProcessError
 from protocolinterface import val
 from jobqueues.simqueue import SimQueue, QueueJobStatus, _inProgressStatus
-from jobqueues.util import ensurelist, _make_executable
+from jobqueues.util import ensurelist
 import getpass
+import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -400,7 +402,7 @@ class SlurmQueue(SimQueue):
         )
         with open(fname, "w") as f:
             f.write(job_str)
-        _make_executable(fname)
+        os.chmod(fname, 0o700)
 
     def retrieve(self):
         # Nothing to do

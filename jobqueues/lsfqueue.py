@@ -10,7 +10,7 @@ import string
 from subprocess import check_output, CalledProcessError, DEVNULL
 from protocolinterface import val
 from jobqueues.simqueue import SimQueue
-from jobqueues.util import ensurelist, _make_executable
+from jobqueues.util import ensurelist
 from jobqueues.config import loadConfig
 import unittest
 import yaml
@@ -279,7 +279,7 @@ class LsfQueue(SimQueue):
                 os.makedirs(datadir, exist_ok=True)
                 f.write(f"\nmv *.{self.trajext} {datadir}")
 
-        _make_executable(fname)
+        os.chmod(fname, 0o700)
 
     def retrieve(self):
         # Nothing to do

@@ -1,6 +1,6 @@
 from celery.exceptions import SoftTimeLimitExceeded
 from billiard import current_process
-from jobqueues.util import _getVisibleGPUdevices, _make_executable
+from jobqueues.util import _getVisibleGPUdevices
 
 
 visibledevs = _getVisibleGPUdevices()
@@ -105,4 +105,4 @@ def _createJobScript(
             if os.path.abspath(odir) != os.path.abspath(workdir):
                 f.write("\nmv {} {}".format(" ".join(copyextensions), odir))
 
-    _make_executable(fname)
+    os.chmod(fname, 0o700)

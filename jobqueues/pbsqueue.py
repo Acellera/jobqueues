@@ -11,7 +11,6 @@ from subprocess import check_output, CalledProcessError
 from protocolinterface import val
 from jobqueues.simqueue import SimQueue
 from jobqueues.config import loadConfig
-from jobqueues.util import _make_executable
 import logging
 
 logger = logging.getLogger(__name__)
@@ -187,7 +186,7 @@ class PBSQueue(SimQueue):
                 os.makedirs(datadir, exist_ok=True)
                 f.write(f"\nmv *.{self.trajext} {datadir}")
 
-        _make_executable(fname)
+        os.chmod(fname, 0o700)
 
     def retrieve(self):
         # Nothing to do

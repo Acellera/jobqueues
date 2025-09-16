@@ -62,14 +62,3 @@ def _filterVisibleGPUdevices(devices, _logger):
         # Only keep the selected visible devices. intersect of the two lists
         devices = [dd for dd in devices if dd in visible_devices]
     return devices
-
-
-def _make_executable(fname):
-    import os
-    import stat
-
-    # Get current permissions
-    st = os.stat(fname)
-
-    # Add execute permission for user and group
-    os.chmod(fname, st.st_mode | stat.S_IXUSR | stat.S_IXGRP)

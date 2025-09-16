@@ -10,7 +10,7 @@ import string
 from subprocess import check_output, CalledProcessError, DEVNULL
 from protocolinterface import val
 from jobqueues.simqueue import SimQueue
-from jobqueues.util import ensurelist, _make_executable
+from jobqueues.util import ensurelist
 from jobqueues.config import loadConfig
 from math import ceil
 import logging
@@ -223,7 +223,7 @@ class SgeQueue(SimQueue):
         with open(fname, "w") as f:
             f.write(job_str)
 
-        _make_executable(fname)
+        os.chmod(fname, 0o700)
 
     def retrieve(self):
         # Nothing to do
