@@ -33,11 +33,11 @@ nvidia-cuda-mps-control -d
 echo "start_server -uid ${UID}" | nvidia-cuda-mps-control
 
 cd TESTDIR_PLACEHOLDER/0
-TESTDIR_PLACEHOLDER/0/run0.sh  | tee log_1.txt &
+TESTDIR_PLACEHOLDER/0/run0.sh  2>&1 | tee log_1.txt &
 cd TESTDIR_PLACEHOLDER/1
-TESTDIR_PLACEHOLDER/1/run1.sh  | tee log_2.txt &
+TESTDIR_PLACEHOLDER/1/run1.sh  2>&1 | tee log_2.txt &
 cd TESTDIR_PLACEHOLDER/2
-TESTDIR_PLACEHOLDER/2/run2.sh  | tee log_3.txt &
+TESTDIR_PLACEHOLDER/2/run2.sh  2>&1 | tee log_3.txt &
 cd TESTDIR_PLACEHOLDER/0
 
 wait
