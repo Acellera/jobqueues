@@ -69,7 +69,7 @@ echo "start_server -uid ${UID}" | nvidia-cuda-mps-control
 
 {% for rsh in runsh %}
 cd {{ rsh[0] }}
-{{ rsh[1] }} {% if run_as_daemon %} | tee log_{{loop.index}}.txt &{% endif %}
+{{ rsh[1] }} {% if run_as_daemon %} 2>&1 | tee log_{{loop.index}}.txt &{% endif %}
 
 {% endfor %}
 {% if runsh|length > 1 %}
