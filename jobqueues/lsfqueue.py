@@ -335,16 +335,15 @@ class LsfQueue(SimQueue):
             Total running and queued workunits
         """
         import time
-        import getpass
 
         if self.queue is None:
             raise ValueError("The queue needs to be defined.")
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
-        user = getpass.getuser()
+        uid = os.getuid()
         l_total = 0
         for q in ensurelist(self.queue):
-            cmd = [self._qstatus, "-J", self.jobname, "-u", user, "-q", q]
+            cmd = [self._qstatus, "-J", self.jobname, "-u", uid, "-q", q]
             logger.debug(cmd)
 
             # This command randomly fails so I need to allow it to repeat or it crashes adaptive
@@ -372,21 +371,19 @@ class LsfQueue(SimQueue):
 
     def stop(self):
         """Cancels all currently running and queued jobs"""
-        import getpass
-
         if self.jobname is None:
             raise ValueError("The jobname needs to be defined.")
 
-        user = getpass.getuser()
+        uid = os.getuid()
 
         if self.queue is not None:
             for q in ensurelist(self.queue):
-                cmd = [self._qcancel, "-J", self.jobname, "-u", user, "-q", q]
+                cmd = [self._qcancel, "-J", self.jobname, "-u", uid, "-q", q]
                 logger.debug(cmd)
                 ret = check_output(cmd, stderr=DEVNULL)
                 logger.debug(ret.decode("ascii"))
         else:
-            cmd = [self._qcancel, "-J", self.jobname, "-u", user]
+            cmd = [self._qcancel, "-J", self.jobname, "-u", uid]
             logger.debug(cmd)
             ret = check_output(cmd, stderr=DEVNULL)
             logger.debug(ret.decode("ascii"))

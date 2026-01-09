@@ -8,13 +8,10 @@ import shutil
 import random
 import string
 from jobqueues.config import loadConfig
-import yaml
 from subprocess import check_output, CalledProcessError
 from protocolinterface import val
 from jobqueues.simqueue import SimQueue, QueueJobStatus, _inProgressStatus
 from jobqueues.util import ensurelist
-import getpass
-import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -227,7 +224,7 @@ class SlurmQueue(SimQueue):
             "user",
             "str",
             "The SLURM user submitting and managing jobs",
-            getpass.getuser(),
+            os.getuid(),
             val.String(),
         )
         self._arg(
