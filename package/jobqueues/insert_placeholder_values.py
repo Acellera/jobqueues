@@ -1,29 +1,17 @@
-import traceback
-import versioneer
+import yaml
+import setuptools_scm
 
 try:
-    __version__ = versioneer.get_version()
+    __version__ = setuptools_scm.get_version()
 except Exception:
-    print(traceback.format_exc())
     print("Could not get version. Defaulting to version 0")
     __version__ = "0"
 
-
 # Fix conda meta.yaml
 with open("package/jobqueues/recipe_template.yaml", "r") as f:
-    text = f.read()
+    recipe = yaml.load(f, Loader=yaml.FullLoader)
 
-text = text.replace("BUILD_VERSION_PLACEHOLDER", __version__)
-
-# import toml
-
-# pyproject = toml.load("pyproject.toml")
-# deps = pyproject["project"]["dependencies"]
-
-# text = text.replace(
-#     "DEPENDENCY_PLACEHOLDER",
-#     "".join(["    - {}\n".format(dep.strip()) for dep in deps]),
-# )
+recipe["package"]["version"] = __version__
 
 with open("package/jobqueues/recipe.yaml", "w") as f:
-    f.write(text)
+    yaml.dump(recipe, f)

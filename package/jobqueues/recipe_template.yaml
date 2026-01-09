@@ -1,6 +1,6 @@
 package:
   name: jobqueues
-  version: BUILD_VERSION_PLACEHOLDER
+  version:
 
 source:
   path: ../..
@@ -12,6 +12,7 @@ requirements:
   host:
     - pip
     - python
+    - python-build
     - setuptools-scm>=8
 
   run:

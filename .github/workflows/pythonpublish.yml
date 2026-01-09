@@ -56,13 +56,11 @@ jobs:
           password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
           skip_existing: true
 
-      - name: Build and publish conda package
-        run: |
-          mamba install anaconda-client rattler-build -y -q
-          python package/jobqueues/insert_placeholder_values.py
-
       - name: Build conda package
-        run: rattler-build build --recipe ./package/jobqueues/recipe.yaml --output-dir /tmp/pkg/ -c acellera -c conda-forge
+        run: |
+          python package/jobqueues/insert_placeholder_values.py
+          mamba install anaconda-client rattler-build -y -q
+          rattler-build build --recipe ./package/jobqueues/recipe.yaml --output-dir /tmp/pkg/ -c acellera -c conda-forge
 
       - name: Upload to conda
         run: |
