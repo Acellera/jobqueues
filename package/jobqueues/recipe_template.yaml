@@ -7,14 +7,12 @@ source:
 
 build:
   noarch: python
-  script:
-    - pip install . -vv
 
 requirements:
   host:
     - pip
     - python
-    - versioneer==0.28
+    - setuptools-scm>=8
 
   run:
     - python

@@ -1,9 +1,15 @@
 from jobqueues.home import home as __home
 import os
 import logging.config
-from jobqueues import _version
+from importlib.metadata import version, PackageNotFoundError
 
-__version__ = _version.get_versions()["version"]
+# from importlib.resources import files
+
+try:
+    __version__ = version("jobqueues")
+except PackageNotFoundError:
+    pass
+
 
 try:
     logging.config.fileConfig(
