@@ -142,6 +142,8 @@ class PBSQueue(SimQueue):
         return ret
 
     def _createJobScript(self, fname, workdir, runsh):
+        from jobqueues.util import _makeExecutable
+
         workdir = os.path.abspath(workdir)
         if not self.queue and self.ngpu > 0:
             self.queue = "gpgpu"
@@ -186,7 +188,7 @@ class PBSQueue(SimQueue):
                 os.makedirs(datadir, exist_ok=True)
                 f.write(f"\nmv *.{self.trajext} {datadir}")
 
-        os.chmod(fname, 0o700)
+        _makeExecutable(fname)
 
     def retrieve(self):
         # Nothing to do

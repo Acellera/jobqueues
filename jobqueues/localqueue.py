@@ -112,6 +112,8 @@ class _LocalQueue(SimQueue):
         logger.info("Shutting down worker thread")
 
     def _createJobScript(self, fname, workdir, runsh, gpudevice=None):
+        from jobqueues.util import _makeExecutable
+
         with open(fname, "w") as f:
             f.write("#!/bin/bash\n\n")
             # Trap kill signals to create sentinel file
@@ -137,7 +139,7 @@ class _LocalQueue(SimQueue):
                 if os.path.abspath(odir) != os.path.abspath(workdir):
                     f.write("\nmv {} {}".format(" ".join(self.copy), odir))
 
-        os.chmod(fname, 0o700)
+        _makeExecutable(fname)
 
     def _setRunning(self, path):
         self._states[path] = "R"
@@ -433,7 +435,7 @@ class LocalCPUQueue(_LocalQueue):
         from math import floor
         import psutil
 
-        memory = psutil.virtual_memory().total / 1024 ** 2
+        memory = psutil.virtual_memory().total / 1024**2
         memory *= max(0, min(1, self.ncpu / psutil.cpu_count()))  # Clamp to [0, 1]
         memory = int(floor(memory))
 

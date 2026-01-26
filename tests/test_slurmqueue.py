@@ -23,11 +23,13 @@ def datadir(tmpdir, request):
 
 
 def _create_execdir(tmpdir, runscript="run.sh"):
+    from jobqueues.util import _makeExecutable
+
     os.makedirs(tmpdir)
     run_sh = os.path.join(tmpdir, runscript)
     with open(run_sh, "w") as f:
         f.write("sleep 5\n")
-    os.chmod(run_sh, 0o700)
+    _makeExecutable(run_sh)
     return tmpdir
 
 

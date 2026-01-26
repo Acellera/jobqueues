@@ -81,6 +81,7 @@ def _createJobScript(
     fname, workdir, runsh, deviceid, sentinel, datadir, copyextensions
 ):
     import os
+    from jobqueues.util import _makeExecutable
 
     with open(fname, "w") as f:
         f.write("#!/bin/bash\n\n")
@@ -105,4 +106,4 @@ def _createJobScript(
             if os.path.abspath(odir) != os.path.abspath(workdir):
                 f.write("\nmv {} {}".format(" ".join(copyextensions), odir))
 
-    os.chmod(fname, 0o700)
+    _makeExecutable(fname)

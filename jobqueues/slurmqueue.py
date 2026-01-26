@@ -327,6 +327,7 @@ class SlurmQueue(SimQueue):
 
     def _createJobScript(self, fname, workdir, runsh, nvidia_mps=False, commands=None):
         from jobqueues.config import template_env
+        from jobqueues.util import _makeExecutable
 
         # Create a list of lists with the directory of the run.sh and the run.sh itself
         runsh = ensurelist(runsh)
@@ -399,7 +400,7 @@ class SlurmQueue(SimQueue):
         )
         with open(fname, "w") as f:
             f.write(job_str)
-        os.chmod(fname, 0o700)
+        _makeExecutable(fname)
 
     def retrieve(self):
         # Nothing to do

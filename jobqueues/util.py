@@ -62,3 +62,10 @@ def _filterVisibleGPUdevices(devices, _logger):
         # Only keep the selected visible devices. intersect of the two lists
         devices = [dd for dd in devices if dd in visible_devices]
     return devices
+
+
+def _makeExecutable(fname):
+    import os
+
+    current_mode = os.stat(fname).st_mode
+    os.chmod(fname, current_mode | 0o100)

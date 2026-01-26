@@ -185,6 +185,7 @@ class SgeQueue(SimQueue):
 
     def _createJobScript(self, fname, workdir, runsh):
         from jobqueues.config import template_env
+        from jobqueues.util import _makeExecutable
 
         workdir = os.path.abspath(workdir)
         sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
@@ -223,7 +224,7 @@ class SgeQueue(SimQueue):
         with open(fname, "w") as f:
             f.write(job_str)
 
-        os.chmod(fname, 0o700)
+        _makeExecutable(fname)
 
     def retrieve(self):
         # Nothing to do
