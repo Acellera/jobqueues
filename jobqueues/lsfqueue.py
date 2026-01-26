@@ -256,7 +256,7 @@ class LsfQueue(SimQueue):
             f.write(f"#BSUB -o {self.outputstream}\n")
             f.write(f"#BSUB -e {self.errorstream}\n")
             if self.envvars is not None:
-                f.write(f"#BSUB --env {self.envvars}\n")
+                f.write(f"#BSUB -env {self.envvars}\n")
             if self.walltime is not None:
                 f.write(f"#BSUB -W {self.walltime}\n")
             # Trap kill signals to create sentinel file
