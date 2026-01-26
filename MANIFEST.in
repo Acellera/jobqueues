@@ -3,3 +3,6 @@ include jobqueues/logging.ini
 graft jobqueues/templates
 include jobqueues/config_lsf.yml
 include jobqueues/config_slurm.yml
+prune doc
+prune tests
+prune package
