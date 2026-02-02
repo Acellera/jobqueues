@@ -74,7 +74,7 @@ class LsfQueue(SimQueue):
         "app": None,
         "gpu_queue": None,
         "cpu_queue": None,
-        "ngpu": 1,
+        "ngpu": 0,
         "gpu_options": None,
         "ncpu": 1,
         "memory": 4000000,
