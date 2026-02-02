@@ -89,7 +89,7 @@ class SlurmQueue(SimQueue):
     _defaults = {
         "partition": None,
         "priority": None,
-        "ngpu": 1,
+        "ngpu": 0,
         "ncpu": 1,
         "memory": 1000,
         "walltime": None,
