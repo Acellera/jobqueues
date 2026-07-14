@@ -6,7 +6,6 @@
 #SBATCH --mem=1000
 #SBATCH --priority=None
 #SBATCH -D TESTDIR_PLACEHOLDER/0
-#SBATCH --gres=gpu:1
 #SBATCH --output=slurm.%N.%j.out
 #SBATCH --error=slurm.%N.%j.err
 #SBATCH --export=ACEMD_HOME,HTMD_LICENSE_FILE
