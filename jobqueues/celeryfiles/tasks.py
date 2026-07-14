@@ -1,6 +1,6 @@
 from celery.exceptions import SoftTimeLimitExceeded
 from billiard import current_process
-from jobqueues.util import _getVisibleGPUdevices
+from jobqueues.util import _getVisibleGPUdevices, _generateUniqueJobScriptName
 
 
 visibledevs = _getVisibleGPUdevices()
@@ -26,7 +26,7 @@ def execute_gpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
         gpu_index = visibledevs[worker_index % len(visibledevs)]
     print(f"Running job on worker index {worker_index} and GPU device {gpu_index}")
 
-    jobsh = os.path.join(folder, "job.sh")
+    jobsh = os.path.join(folder, _generateUniqueJobScriptName("job.sh"))
     stdfile = os.path.join(folder, "celery.out")
     _createJobScript(jobsh, folder, runsh, gpu_index, sentinel, datadir, copyextensions)
 
@@ -54,7 +54,7 @@ def execute_cpu_job(folder, runsh, sentinel, datadir, copyextensions, jobname=No
     import os
     import time
 
-    jobsh = os.path.join(folder, "job.sh")
+    jobsh = os.path.join(folder, _generateUniqueJobScriptName("job.sh"))
     stdfile = os.path.join(folder, "celery.out")
     _createJobScript(jobsh, folder, runsh, None, sentinel, datadir, copyextensions)
 

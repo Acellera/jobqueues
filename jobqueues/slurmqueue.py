@@ -433,6 +433,13 @@ class SlurmQueue(SimQueue):
             must be the same as the length of `dirs`.
         nvidia_mps : bool
             Whether to use Nvidia's Multi-Process Service (MPS) to share GPU resources among all jobs in `dirs`.
+
+        Returns
+        -------
+        jobscript : str or list of str or None
+            Only on dry runs: the path of the generated job script, or a list of paths
+            when multiple directories are submitted (one script per directory).
+            Real submissions return None.
         """
         dirs = self._submitinit(dirs)
 
@@ -463,7 +470,7 @@ class SlurmQueue(SimQueue):
             for d in dirs:
                 self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(dirs[0], self.jobscript))
+            jobscript = os.path.abspath(os.path.join(dirs[0], self._getJobScriptName()))
             self._createJobScript(jobscript, dirs[0], runscripts, nvidia_mps=True)
             try:
                 if _dryrun:
@@ -476,9 +483,10 @@ class SlurmQueue(SimQueue):
                 raise
             except Exception:
                 raise
-            return
+            return jobscript if _dryrun else None
 
         # if all folders exist, submit
+        jobscripts = []
         for i, d in enumerate(dirs):
             logger.info("Queueing " + d)
 
@@ -495,8 +503,9 @@ class SlurmQueue(SimQueue):
 
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
+            jobscript = os.path.abspath(os.path.join(d, self._getJobScriptName()))
             self._createJobScript(jobscript, d, runscript, commands=commands)
+            jobscripts.append(jobscript)
             try:
                 if _dryrun:
                     logger.info(f"Dry run. Here it would call submit on {jobscript}")
@@ -508,6 +517,9 @@ class SlurmQueue(SimQueue):
                 raise
             except Exception:
                 raise
+
+        if _dryrun:
+            return jobscripts[0] if len(jobscripts) == 1 else jobscripts
 
     def _robust_check_output(self, cmd, maxtries=3):
         # Attempts multiple times to execute the command before failing. This is to handle connection issues to SLURM

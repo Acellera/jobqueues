@@ -69,3 +69,19 @@ def _makeExecutable(fname):
 
     current_mode = os.stat(fname).st_mode
     os.chmod(fname, current_mode | 0o100)
+
+
+def _generateUniqueJobScriptName(base):
+    """Generate a unique job script name from a base name.
+
+    Appends the current date/time and a random uid to avoid file collisions
+    when multiple jobs are submitted from the same folder, e.g.
+    "job.sh" -> "job_20260714-153045_a1b2c3d4.sh"
+    """
+    import os
+    import uuid
+    from datetime import datetime
+
+    name, ext = os.path.splitext(base)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{name}_{ts}_{uuid.uuid4().hex[:8]}{ext}"

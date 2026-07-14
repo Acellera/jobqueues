@@ -3,6 +3,7 @@ from distutils import dir_util
 from jobqueues.slurmqueue import SlurmQueue
 import yaml
 import re
+import glob
 import os
 
 
@@ -48,6 +49,12 @@ def _compare_jobsh(jobsh, expected, datadir):
     assert jobsh == expected
 
 
+def _find_jobsh(execdir):
+    matches = glob.glob(os.path.join(str(execdir), "job_*.sh"))
+    assert len(matches) == 1, f"Expected exactly one job script, found {matches}"
+    return matches[0]
+
+
 def _test_config(datadir):
     from jobqueues.home import home
     import os
@@ -81,9 +88,7 @@ def _test_submit_command(datadir):
 
     sl.submit([execdir], commands=["sleep 5"], _dryrun=True)
 
-    _compare_jobsh(
-        os.path.join(execdir, "job.sh"), datadir.join("_submit_command.sh"), datadir
-    )
+    _compare_jobsh(_find_jobsh(execdir), datadir.join("_submit_command.sh"), datadir)
 
 
 def _test_submit_folder(datadir):
@@ -98,9 +103,7 @@ def _test_submit_folder(datadir):
     sl.envvars = "TEST=3"
     sl.submit(execdir, _dryrun=True)
 
-    _compare_jobsh(
-        os.path.join(execdir, "job.sh"), datadir.join("_submit_folder.sh"), datadir
-    )
+    _compare_jobsh(_find_jobsh(execdir), datadir.join("_submit_folder.sh"), datadir)
 
 
 def _test_submit_multi_folder(datadir):
@@ -118,7 +121,7 @@ def _test_submit_multi_folder(datadir):
         sl.submit(execdir, _dryrun=True)
 
         _compare_jobsh(
-            os.path.join(execdir, "job.sh"),
+            _find_jobsh(execdir),
             datadir.join("_submit_multi_folder.sh"),
             execdir,
         )
@@ -131,12 +134,12 @@ def _test_nvidia_mps(datadir):
     execdirs = [_create_execdir(os.path.join(datadir, str(i))) for i in range(3)]
     sl.submit(execdirs, nvidia_mps=True, _dryrun=True)
 
-    assert os.path.exists(os.path.join(execdirs[0], "job.sh"))
+    assert len(glob.glob(os.path.join(execdirs[0], "job_*.sh"))) == 1
     for i in range(1, 3):
-        assert not os.path.exists(os.path.join(execdirs[i], "job.sh"))
+        assert len(glob.glob(os.path.join(execdirs[i], "job_*.sh"))) == 0
 
     _compare_jobsh(
-        os.path.join(execdirs[0], "job.sh"),
+        _find_jobsh(execdirs[0]),
         datadir.join("_slurm_queue_nvidia_mps_job.sh"),
         datadir,
     )
@@ -157,12 +160,52 @@ def _test_nvidia_mps_runscript(datadir):
         _dryrun=True,
     )
 
-    assert os.path.exists(os.path.join(execdirs[0], "job.sh"))
+    assert len(glob.glob(os.path.join(execdirs[0], "job_*.sh"))) == 1
     for i in range(1, 3):
-        assert not os.path.exists(os.path.join(execdirs[i], "job.sh"))
+        assert len(glob.glob(os.path.join(execdirs[i], "job_*.sh"))) == 0
 
     _compare_jobsh(
-        os.path.join(execdirs[0], "job.sh"),
+        _find_jobsh(execdirs[0]),
         datadir.join("_slurm_queue_nvidia_mps_job_runscripts.sh"),
         datadir,
     )
+
+
+def _test_dryrun_returns_jobscript_path(tmpdir):
+    execdir = str(tmpdir.join("0"))
+    os.makedirs(execdir, exist_ok=True)
+
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "jobqueues_test"
+    ret = sl.submit([execdir], commands=["sleep 5"], _dryrun=True)
+
+    assert ret == _find_jobsh(execdir)
+
+    execdirs = [_create_execdir(str(tmpdir.join(str(i + 1)))) for i in range(2)]
+    ret = sl.submit(execdirs, commands=["sleep 5", "sleep 5"], _dryrun=True)
+
+    assert isinstance(ret, list)
+    assert ret == [_find_jobsh(d) for d in execdirs]
+
+
+def _test_dryrun_returns_jobscript_path_nvidia_mps(tmpdir):
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "test"
+
+    execdirs = [_create_execdir(str(tmpdir.join(str(i)))) for i in range(3)]
+    ret = sl.submit(execdirs, nvidia_mps=True, _dryrun=True)
+
+    assert ret == _find_jobsh(execdirs[0])
+
+
+def _test_unique_jobscript_names_on_concurrent_submission(tmpdir):
+    execdir = str(tmpdir.join("0"))
+    os.makedirs(execdir, exist_ok=True)
+
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "jobqueues_test"
+    sl.submit([execdir], commands=["sleep 5"], _dryrun=True)
+    sl.submit([execdir], commands=["sleep 5"], _dryrun=True)
+
+    scripts = glob.glob(os.path.join(execdir, "job_*.sh"))
+    assert len(scripts) == 2, f"Expected two distinct job scripts, found {scripts}"

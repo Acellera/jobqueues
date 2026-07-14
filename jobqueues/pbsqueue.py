@@ -237,7 +237,7 @@ class PBSQueue(SimQueue):
             runscript = commands[i] if commands is not None else self._getRunScript(d)
             self._cleanSentinel(d)
 
-            jobscript = os.path.abspath(os.path.join(d, self.jobscript))
+            jobscript = os.path.abspath(os.path.join(d, self._getJobScriptName()))
             self._createJobScript(jobscript, d, runscript)
             try:
                 ret = check_output([self._qsubmit, jobscript])

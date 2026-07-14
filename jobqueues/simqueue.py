@@ -5,7 +5,7 @@
 #
 from abc import ABC, abstractmethod
 from protocolinterface import ProtocolInterface, val
-from jobqueues.util import ensurelist
+from jobqueues.util import ensurelist, _generateUniqueJobScriptName
 import logging
 import enum
 
@@ -92,7 +92,7 @@ class SimQueue(ABC, ProtocolInterface):
         self._arg(
             "jobscript",
             "str",
-            "Name of the automatically generated job script",
+            "Base name of the automatically generated job script. A date/time and unique id suffix is appended to it.",
             "job.sh",
             val.String(),
         )
@@ -215,6 +215,9 @@ class SimQueue(ABC, ProtocolInterface):
                 f"File {runscript} does not have execution permissions."
             )
         return runscript
+
+    def _getJobScriptName(self):
+        return _generateUniqueJobScriptName(self.jobscript)
 
     @abstractmethod
     def stop(self):

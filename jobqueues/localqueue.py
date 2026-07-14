@@ -93,7 +93,7 @@ class _LocalQueue(SimQueue):
                     logger.info("Running " + path + " on device " + str(deviceid))
                 self._setRunning(path)
 
-                jobsh = os.path.join(path, self.jobscript)
+                jobsh = os.path.join(path, self._getJobScriptName())
                 self._createJobScript(jobsh, path, runsh, deviceid)
 
                 try:
