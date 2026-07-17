@@ -171,6 +171,26 @@ def _test_nvidia_mps_runscript(datadir):
     )
 
 
+def _test_nvidia_mps_scales_resources(tmpdir):
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "test"
+    sl.ncpu = 2
+    sl.memory = 1500
+
+    execdirs = [_create_execdir(str(tmpdir.join(str(i)))) for i in range(3)]
+    jobsh = sl.submit(execdirs, nvidia_mps=True, _dryrun=True)
+
+    with open(jobsh, "r") as f:
+        content = f.read()
+
+    # The single MPS job hosts all three processes: it must request the
+    # whole batch's CPUs and memory, without mutating the queue object
+    assert "#SBATCH --cpus-per-task=6" in content
+    assert "#SBATCH --mem=4500" in content
+    assert sl.ncpu == 2
+    assert sl.memory == 1500
+
+
 def _test_dryrun_returns_jobscript_path(tmpdir):
     execdir = str(tmpdir.join("0"))
     os.makedirs(execdir, exist_ok=True)

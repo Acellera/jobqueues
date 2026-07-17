@@ -325,9 +325,21 @@ class SlurmQueue(SimQueue):
         ret = os.path.abspath(ret)
         return ret
 
-    def _createJobScript(self, fname, workdir, runsh, nvidia_mps=False, commands=None):
+    def _createJobScript(
+        self,
+        fname,
+        workdir,
+        runsh,
+        nvidia_mps=False,
+        commands=None,
+        ncpu=None,
+        memory=None,
+    ):
         from jobqueues.config import template_env
         from jobqueues.util import _makeExecutable
+
+        ncpu = self.ncpu if ncpu is None else ncpu
+        memory = self.memory if memory is None else memory
 
         # Create a list of lists with the directory of the run.sh and the run.sh itself
         runsh = ensurelist(runsh)
@@ -338,6 +350,8 @@ class SlurmQueue(SimQueue):
 
         workdir = os.path.abspath(workdir)
         sentinel = os.path.normpath(os.path.join(workdir, self._sentinel))
+        # MPS jobs run several directories in a single job: each needs its own sentinel
+        sentinels = [os.path.normpath(os.path.join(d, self._sentinel)) for d, _ in runsh]
 
         # Move completed trajectories
         odir = None
@@ -359,13 +373,14 @@ class SlurmQueue(SimQueue):
             errorstream = None
             outputstream = None
             sentinel = None
+            sentinels = []
 
         template = template_env.get_template("SLURM_job.sh.j2")
         job_str = template.render(
             jobname=self.jobname,
             partition=",".join(ensurelist(self.partition)),
-            ncpu=self.ncpu,
-            memory=self.memory,
+            ncpu=ncpu,
+            memory=memory,
             priority=self.priority,
             workdir=workdir,
             gpustring=gpustring,
@@ -385,6 +400,7 @@ class SlurmQueue(SimQueue):
             ),
             account=self.account,
             sentinel=sentinel,
+            sentinels=sentinels,
             prerun=prerun,
             runsh=runsh,
             odir=odir,
@@ -433,6 +449,9 @@ class SlurmQueue(SimQueue):
             must be the same as the length of `dirs`.
         nvidia_mps : bool
             Whether to use Nvidia's Multi-Process Service (MPS) to share GPU resources among all jobs in `dirs`.
+            All directories are submitted as a single SLURM job which starts a job-private MPS daemon and runs
+            all run scripts concurrently on the same GPU(s). The job requests `ncpu * len(dirs)` CPUs and
+            `memory * len(dirs)` memory since the processes run concurrently, while `ngpu` is not scaled.
 
         Returns
         -------
@@ -471,7 +490,16 @@ class SlurmQueue(SimQueue):
                 self._cleanSentinel(d)
 
             jobscript = os.path.abspath(os.path.join(dirs[0], self._getJobScriptName()))
-            self._createJobScript(jobscript, dirs[0], runscripts, nvidia_mps=True)
+            # The single MPS job hosts len(dirs) concurrent processes: request the
+            # whole batch's CPUs and memory while sharing the GPUs through MPS
+            self._createJobScript(
+                jobscript,
+                dirs[0],
+                runscripts,
+                nvidia_mps=True,
+                ncpu=self.ncpu * len(dirs) if self.ncpu else self.ncpu,
+                memory=self.memory * len(dirs) if self.memory else self.memory,
+            )
             try:
                 if _dryrun:
                     logger.info(f"Dry run. Here it would call submit on {jobscript}")
