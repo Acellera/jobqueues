@@ -47,6 +47,14 @@ fi
 # must not inherit the job's CUDA_VISIBLE_DEVICES indices
 unset CUDA_VISIBLE_DEVICES
 
+# Propagate the MPS pipe/log dirs into apptainer/singularity containers: with
+# --cleanenv only *ENV_-prefixed variables cross the container boundary, and a
+# client which cannot find the pipe silently falls back to time-slicing the GPU
+export APPTAINERENV_CUDA_MPS_PIPE_DIRECTORY=$CUDA_MPS_PIPE_DIRECTORY
+export APPTAINERENV_CUDA_MPS_LOG_DIRECTORY=$CUDA_MPS_LOG_DIRECTORY
+export SINGULARITYENV_CUDA_MPS_PIPE_DIRECTORY=$CUDA_MPS_PIPE_DIRECTORY
+export SINGULARITYENV_CUDA_MPS_LOG_DIRECTORY=$CUDA_MPS_LOG_DIRECTORY
+
 cd TESTDIR_PLACEHOLDER/0
 TESTDIR_PLACEHOLDER/0/run.sh  2>&1 | tee log_1.txt &
 cd TESTDIR_PLACEHOLDER/1
