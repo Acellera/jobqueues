@@ -36,6 +36,11 @@ JOB_STATE_CODES = {
 }
 
 
+def _parse_jobid(sbatch_output):
+    """The job ID from ``sbatch --parsable`` output: ``jobid`` or ``jobid;cluster``."""
+    return sbatch_output.decode("ascii").strip().split(";")[0]
+
+
 class SlurmQueue(SimQueue):
     """Queue system for SLURM
 
@@ -78,6 +83,8 @@ class SlurmQueue(SimQueue):
         Envvars to propagate from submission node to the running node (comma-separated)
     prerun : list, default=None
         Shell commands to execute on the running node before the job (e.g. loading modules)
+    dependency : str, default=None
+        SLURM job dependency, e.g. 'afterok:1234'. Jobs whose dependency can never be met are cancelled.
 
     Examples
     --------
@@ -270,6 +277,13 @@ class SlurmQueue(SimQueue):
             val.Number(int, "0POS"),
         )
         self._arg(
+            "dependency",
+            "str",
+            "SLURM job dependency, e.g. 'afterok:1234'. Jobs whose dependency can never be met are cancelled.",
+            None,
+            val.String(),
+        )
+        self._arg(
             "constraint",
             "str",
             "Specifies features that a federated cluster must have to have a sibling job submitted to it. "
@@ -411,6 +425,7 @@ class SlurmQueue(SimQueue):
             ntasks_per_core=self.ntasks_per_core,
             cpus_per_task=self.cpus_per_task,
             constraint=self.constraint,
+            dependency=self.dependency,
             run_as_daemon=len(runsh) > 1,
             nvidia_mps=nvidia_mps,
         )
@@ -455,10 +470,10 @@ class SlurmQueue(SimQueue):
 
         Returns
         -------
-        jobscript : str or list of str or None
+        jobscript : str or list of str
             Only on dry runs: the path of the generated job script, or a list of paths
             when multiple directories are submitted (one script per directory).
-            Real submissions return None.
+            Real submissions return the list of SLURM job IDs.
         """
         dirs = self._submitinit(dirs)
 
@@ -476,6 +491,7 @@ class SlurmQueue(SimQueue):
         if self.partition is None:
             raise ValueError("The partition needs to be defined.")
 
+        jobids = []
         if nvidia_mps:
             logger.info(f"Queueing single job with directories {dirs}")
             if self.jobname is None:
@@ -504,14 +520,15 @@ class SlurmQueue(SimQueue):
                 if _dryrun:
                     logger.info(f"Dry run. Here it would call submit on {jobscript}")
                 else:
-                    ret = check_output([self._qsubmit, jobscript])
+                    ret = check_output([self._qsubmit, "--parsable", jobscript])
                     logger.debug(ret.decode("ascii"))
+                    jobids.append(_parse_jobid(ret))
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
             except Exception:
                 raise
-            return jobscript if _dryrun else None
+            return jobscript if _dryrun else jobids
 
         # if all folders exist, submit
         jobscripts = []
@@ -538,8 +555,9 @@ class SlurmQueue(SimQueue):
                 if _dryrun:
                     logger.info(f"Dry run. Here it would call submit on {jobscript}")
                 else:
-                    ret = check_output([self._qsubmit, jobscript])
+                    ret = check_output([self._qsubmit, "--parsable", jobscript])
                     logger.debug(ret.decode("ascii"))
+                    jobids.append(_parse_jobid(ret))
             except CalledProcessError as e:
                 logger.error(e.output)
                 raise
@@ -548,6 +566,7 @@ class SlurmQueue(SimQueue):
 
         if _dryrun:
             return jobscripts[0] if len(jobscripts) == 1 else jobscripts
+        return jobids
 
     def _robust_check_output(self, cmd, maxtries=3):
         # Attempts multiple times to execute the command before failing. This is to handle connection issues to SLURM

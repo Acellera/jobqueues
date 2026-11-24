@@ -229,3 +229,33 @@ def _test_unique_jobscript_names_on_concurrent_submission(tmpdir):
 
     scripts = glob.glob(os.path.join(execdir, "job_*.sh"))
     assert len(scripts) == 2, f"Expected two distinct job scripts, found {scripts}"
+
+
+def test_dependency_in_jobscript(tmpdir):
+    execdir = _create_execdir(str(tmpdir.join("0")))
+    sl = SlurmQueue(_findExecutables=False)
+    sl.partition = "jobqueues_test"
+    sl.dependency = "afterok:1234"
+    sl.submit(execdir, _dryrun=True)
+    with open(_find_jobsh(execdir)) as f:
+        jobsh = f.read()
+    assert "#SBATCH --dependency=afterok:1234\n#SBATCH --kill-on-invalid-dep=yes\n" in jobsh
+
+
+def test_submit_returns_job_ids(tmpdir, monkeypatch):
+    import jobqueues.slurmqueue as sq
+
+    calls = []
+
+    def fake_check_output(cmd):
+        calls.append(cmd)
+        return f"{100 + len(calls)};cluster\n".encode()
+
+    monkeypatch.setattr(sq, "check_output", fake_check_output)
+    dirs = [_create_execdir(str(tmpdir.join(d))) for d in ("a", "b")]
+    sl = SlurmQueue(_findExecutables=False)
+    sl._qsubmit = "sbatch"
+    sl.partition = "jobqueues_test"
+    assert sl.submit(dirs) == ["101", "102"]
+    assert calls[0][:2] == ["sbatch", "--parsable"]
+    assert sl.submit(dirs, nvidia_mps=True) == ["103"]

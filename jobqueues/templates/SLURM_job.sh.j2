@@ -38,6 +38,8 @@
 {% if cpus_per_task is not none %}#SBATCH --cpus-per-task={{ cpus_per_task }}
 {% endif %}
 {% if constraint is not none %}#SBATCH --constraint={{ constraint }}
+{% endif %}{% if dependency is not none %}#SBATCH --dependency={{ dependency }}
+#SBATCH --kill-on-invalid-dep=yes
 {% endif %}
 
 {% if nvidia_mps %}
